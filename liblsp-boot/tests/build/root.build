@@ -1,10 +1,9 @@
 cxx.std = latest
+cxx.features.modules = true
 
 using cxx
 
-hxx{*}: extension = hpp
-ixx{*}: extension = ipp
-txx{*}: extension = tpp
+mxx{*}: extension = ipp
 cxx{*}: extension = cpp
 
 # Every exe{} in this subproject is by default a test.
