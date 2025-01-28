@@ -1,0 +1,17 @@
+# Uncomment to suppress warnings coming from external libraries.
+#
+#cxx.internal.scope = current
+
+cxx.std = latest
+cxx.features.modules = true
+
+using cxx
+
+mxx{*}: extension = ipp
+cxx{*}: extension = cpp
+
+# The test target for cross-testing (running tests under Wine, etc).
+#
+test.target = $cxx.target
+
+config [bool]    config.liblsp_boot.enable_import_std				 ?= ($cxx.class == 'msvc')

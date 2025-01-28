@@ -1,0 +1,6 @@
+$out_root/
+{
+  include liblsp-boot/
+}
+
+export $out_root/liblsp-boot/$import.target

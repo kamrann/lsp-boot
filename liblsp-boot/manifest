@@ -1,0 +1,15 @@
+: 1
+name: liblsp-boot
+version: 0.1.0-a.0.z
+language: c++
+project: lsp-boot
+summary: lsp-boot C++ library
+license: other: proprietary ; Not free/open source.
+description-file: README.md
+url: https://example.org/lsp-boot
+email: cjangus@gmail.com
+
+depends: * build2 >= 0.16.0
+depends: * bpkg >= 0.16.0
+
+depends: libboost-json >= 1.78

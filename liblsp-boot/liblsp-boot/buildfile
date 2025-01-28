@@ -1,0 +1,38 @@
+intf_libs = # Interface dependencies.
+impl_libs = # Implementation dependencies.
+
+import intf_libs += libboost-json%lib{boost_json}
+
+lib{lsp-boot}: {mxx cxx}{** -version} $impl_libs $intf_libs #hxx{version} 
+
+#hxx{version}: in{version} $src_root/manifest
+
+# Build options.
+#
+cxx.poptions =+ "-I$out_root" "-I$src_root"
+
+# Export options.
+#
+lib{lsp-boot}:
+{
+  cxx.export.poptions = "-I$out_root" "-I$src_root"
+  cxx.export.libs = $intf_libs
+}
+
+# For pre-releases use the complete version to make sure they cannot
+# be used in place of another pre-release or the final version. See
+# the version module for details on the version.* variable values.
+#
+if $version.pre_release
+  lib{lsp-boot}: bin.lib.version = "-$version.project_id"
+else
+  lib{lsp-boot}: bin.lib.version = "-$version.major.$version.minor"
+
+# Install into the liblsp-boot/ subdirectory of, say, /usr/include/
+# recreating subdirectories.
+#
+{mxx}{*}:
+{
+  install         = include/liblsp-boot/
+  install.subdirs = true
+}
