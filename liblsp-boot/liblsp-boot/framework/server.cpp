@@ -47,8 +47,8 @@ namespace lsp_boot
 
 		auto temp_todo_err = result.transform([&](auto&& result) {
 			auto response = boost::json::object{
-				{ "id", std::move(request_id) },
-				{ "result", std::move(result) },
+				{ "id"sv, std::move(request_id) },
+				{ "result"sv, std::move(result) },
 			};
 			out_queue.push(std::move(response));
 			return true;
@@ -73,14 +73,14 @@ namespace lsp_boot
 
 	auto Server::dispatch_message(RawMessage&& msg) -> void
 	{
-		if (auto id_it = msg.find("id"); id_it != msg.end())
+		if (auto id_it = msg.find("id"sv); id_it != msg.end())
 		{
-			if (auto method_it = msg.find("method"); method_it != msg.end())
+			if (auto method_it = msg.find("method"sv); method_it != msg.end())
 			{
 				dispatch_request(method_it->value().as_string(), std::move(msg));
 			}
 		}
-		else if (auto method_it = msg.find("method"); method_it != msg.end())
+		else if (auto method_it = msg.find("method"sv); method_it != msg.end())
 		{
 			dispatch_notification(method_it->value().as_string(), std::move(msg));
 		}
