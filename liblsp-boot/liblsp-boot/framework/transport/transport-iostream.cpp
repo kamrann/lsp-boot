@@ -13,6 +13,7 @@ import std;
 #include <istream>
 #include <memory>
 #include <thread>
+#include <format>
 #endif
 
 module lsp_boot.transport;
@@ -42,14 +43,12 @@ namespace lsp_boot
 
 		MessageHeader header;
 
-		// @note: apparently the std library will auto-normalize line endings, removing \r. 
-		// binary mode would likely avoid this, but since it's text by default we can just look for \n instead.
-		constexpr auto newline_char = '\n'; // '\r';
+		constexpr auto initial_newline_char = '\r';
 
 		auto const consume_newline = [&] {
-			//char c1 = in.get();
+			char c1 = in.get();
 			char c2 = in.get();
-			return /*c1 == '\r' &&*/ c2 == '\n';
+			return c1 == '\r' && c2 == '\n';
 			};
 		auto const consume_header_field_separator = [&] {
 			char sep[2];
@@ -59,7 +58,7 @@ namespace lsp_boot
 
 		while (true)
 		{
-			if (in.peek() == newline_char)
+			if (in.peek() == initial_newline_char)
 			{
 				return consume_newline() ? std::optional{ std::move(header) } : std::nullopt;
 			}
@@ -100,7 +99,7 @@ namespace lsp_boot
 					return std::nullopt;
 				}
 
-				while (in.peek() != newline_char)
+				while (in.peek() != initial_newline_char)
 				{
 					header.content_type += in.get();
 				}
@@ -139,7 +138,7 @@ namespace lsp_boot
 
 	auto StreamConnection::process_output() -> void
 	{
-		while (true)
+		while (!shutdown)
 		{
 			auto msg = out_queue.pop();
 			send_message(std::move(msg));
@@ -148,9 +147,13 @@ namespace lsp_boot
 
 	auto StreamConnection::listen() -> int
 	{
-		std::thread out_thread([this] { process_output(); });
+		std::jthread out_thread([this] {
+			process_output();
 
-		while (true) // @todo: listen for shutdown msg
+			err << "StreamConnection output processor shutting down..." << std::endl;
+			});
+
+		while (in.good())
 		{
 			if (auto msg = read_message(); msg.has_value())
 			{
@@ -158,9 +161,13 @@ namespace lsp_boot
 			}
 			else
 			{
-				err << "Something went wrong" << std::endl;
+				err << std::format("{}. Exiting...",
+					in.eof() ? "StreamConnection reached end of input"sv : "StreamConnection message read error"sv) << std::endl;
+				break;
 			}
 		}
-		return 0;
+		err << "StreamConnection shutting down..." << std::endl;
+		shutdown = true;
+		return in.good() || in.eof() ? 0 : -1;
 	}
 }

@@ -7,6 +7,7 @@ import std;
 #include <optional>
 #include <ostream>
 #include <istream>
+#include <atomic>
 #endif
 
 export module lsp_boot.transport:iostream;
@@ -47,5 +48,6 @@ namespace lsp_boot
 		std::istream& in;
 		std::ostream& out;
 		std::ostream& err;
+		std::atomic< bool > shutdown = false;
 	};
 }
