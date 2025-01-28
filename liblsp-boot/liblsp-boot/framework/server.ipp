@@ -49,8 +49,15 @@ namespace lsp_boot
 	{
 	public:
 		using GenericResult = boost::json::value; // @todo: simplifying for now, unclear if reason to maintain static typing.
-		using ServerImplementation = std::function< GenericResult(lsp::Message&&) >;
 		using ServerPump = std::function< void() >;
+
+		struct ServerImplementation
+		{
+			std::shared_ptr< void const > type_erased;
+			std::function< GenericResult(lsp::Request&&) > handle_request;
+			std::function< GenericResult(lsp::Notification&&) > handle_notification;
+			std::function< void() > pump;
+		};
 
 		// @todo: concept for the type returned by the Init.
 		// currently assumed to have op() overloads for message handlers, and pump().
@@ -61,57 +68,64 @@ namespace lsp_boot
 			ImplementationInit&& implementation_init)
 			: in_queue{ pending_input_queue }, out_queue{ output_queue }
 		{
-			std::tie(impl_handler, impl_pump) = wrap_implementation(std::forward< ImplementationInit >(implementation_init));
+			impl = wrap_implementation(std::forward< ImplementationInit >(implementation_init));
 		}
 
 		auto run() -> void;
 
 	private:
 		template < typename ImplementationInit >
-		auto wrap_implementation(ImplementationInit&& implementation_init) -> std::pair< ServerImplementation, ServerPump >
+		auto wrap_implementation(ImplementationInit&& implementation_init) -> ServerImplementation
 		{
 			// @todo: probably won't be sufficient, suspect we may need more complex interactions with the server implementation
 			// needing to send requests to the client too.
 			auto send_notify = [this](lsp::RawMessage&& msg) {
 				out_queue.push(std::move(msg));
 				};
-			//using ImplType = std::remove_reference_t< std::invoke_result_t< ImplementationInit, decltype(send_notify) > >;
-			//auto impl = std::forward< ImplementationInit >(implementation_init)(send_notify);
-			auto impl = std::forward< ImplementationInit >(implementation_init)(send_notify);
-			// @todo: yuck. ideally want to use a function supporting non-copyable.
-			auto impl_ptr = std::shared_ptr{ std::move(impl) };
-			auto handler = [impl_ptr](lsp::Message&& msg) mutable {
-				return std::visit([&]< typename M >(M && msg) -> GenericResult {
-					if constexpr (requires { (*impl_ptr)(std::move(msg)); })
-					{
-						return (*impl_ptr)(std::move(msg));
-					}
-					else
-					{
-						/* @todo: log unsupported/maybe check against our published capabilities. */
-						return boost::json::value{};
-					}
-				}, std::move(msg));
+			auto typed_impl = std::forward< ImplementationInit >(implementation_init)(send_notify);
+			auto impl_ptr = typed_impl.get();
+			
+			auto make_message_handler = [&] {
+				return [impl_ptr](auto&& msg) mutable {
+					return std::visit([&]< typename M >(M&& msg) -> GenericResult {
+						if constexpr (requires { (*impl_ptr)(std::move(msg)); })
+						{
+							return (*impl_ptr)(std::move(msg));
+						}
+						else
+						{
+							/* @todo: log unsupported/maybe check against our published capabilities. */
+							return boost::json::value{};
+						}
+					}, std::move(msg));
+					};
 				};
-			auto pump = [impl_ptr] {
-				impl_ptr->pump();
-				};
-			return std::pair{ handler, pump };
+
+			return ServerImplementation{
+				std::move(typed_impl),
+				make_message_handler(),
+				make_message_handler(),
+				[impl_ptr] { impl_ptr->pump(); },
+			};
 		}
 
 		auto dispatch_request(std::string_view method, lsp::RawMessage&& msg) -> void;
 		auto dispatch_notification(std::string_view method, lsp::RawMessage&& msg) -> void;
 		auto dispatch_message(lsp::RawMessage&& msg) -> void;
 
-		auto handle(lsp::Message msg)
+		auto handle_request(lsp::Request request)
 		{
-			return impl_handler(std::move(msg));
+			return impl.handle_request(std::move(request));
+		}
+
+		auto handle_notification(lsp::Notification notification)
+		{
+			return impl.handle_notification(std::move(notification));
 		}
 
 	private:
 		PendingInputQueue& in_queue;
 		OutputQueue& out_queue;
-		ServerImplementation impl_handler;
-		std::function< void() > impl_pump;
+		ServerImplementation impl;
 	};
 }

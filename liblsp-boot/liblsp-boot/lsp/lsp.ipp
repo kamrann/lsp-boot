@@ -175,11 +175,13 @@ namespace lsp_boot::lsp
 		using SemanticTokens = JsonMessage< Kinds::semantic_tokens >;
 	}
 
-	export using Message = std::variant<
+	export using Request = std::variant<
 		requests::Initialize,
 		requests::DocumentSymbols,
-		requests::SemanticTokens,
+		requests::SemanticTokens
+	>;
 
+	export using Notification = std::variant<
 		notifications::DidOpenTextDocument,
 		notifications::DidChangeTextDocument,
 		notifications::DidCloseTextDocument

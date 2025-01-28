@@ -24,7 +24,7 @@ namespace lsp_boot
 		auto result = [&]() -> std::optional< boost::json::value > {
 			if (method == "initialize"sv)
 			{
-				return handle(requests::Initialize(std::move(msg)));
+				return handle_request(requests::Initialize(std::move(msg)));
 			}
 			// @todo: "shutdown"
 			//else if (method == "textDocument/documentHighlight"sv)
@@ -33,11 +33,11 @@ namespace lsp_boot
 			//}
 			else if (method == "textDocument/semanticTokens/full"sv)
 			{
-				return handle(requests::SemanticTokens(std::move(msg)));
+				return handle_request(requests::SemanticTokens(std::move(msg)));
 			}
 			else if (method == "textDocument/documentSymbol"sv)
 			{
-				return handle(requests::DocumentSymbols(std::move(msg)));
+				return handle_request(requests::DocumentSymbols(std::move(msg)));
 			}
 			else
 			{
@@ -63,11 +63,11 @@ namespace lsp_boot
 		}
 		else if (method == "textDocument/didOpen"sv)
 		{
-			handle(notifications::DidOpenTextDocument(std::move(msg))); // @todo: need to check protocol. possible that we only ever want params beyond here. msg.at("params"));
+			handle_notification(notifications::DidOpenTextDocument(std::move(msg)));
 		}
 		else if (method == "textDocument/didChange"sv)
 		{
-			handle(notifications::DidChangeTextDocument(std::move(msg)));
+			handle_notification(notifications::DidChangeTextDocument(std::move(msg)));
 		}
 	}
 
@@ -92,7 +92,7 @@ namespace lsp_boot
 		{
 			auto msg = in_queue.pop();
 			dispatch_message(std::move(msg));
-			impl_pump();
+			impl.pump();
 		}
 	}
 }
