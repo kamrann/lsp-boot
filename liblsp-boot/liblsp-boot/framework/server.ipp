@@ -48,14 +48,15 @@ namespace lsp_boot
 	export class Server
 	{
 	public:
-		using GenericResult = boost::json::value; // @todo: simplifying for now, unclear if reason to maintain static typing.
+		using RequestResult = boost::json::value; // @todo: simplifying for now, unclear if reason to maintain static typing.
+		using NotificationResult = boost::json::value; // @todo: simplifying for now, unclear if reason to maintain static typing.
 		using ServerPump = std::function< void() >;
 
 		struct ServerImplementation
 		{
 			std::shared_ptr< void const > type_erased;
-			std::function< GenericResult(lsp::Request&&) > handle_request;
-			std::function< GenericResult(lsp::Notification&&) > handle_notification;
+			std::function< RequestResult(lsp::Request&&) > handle_request;
+			std::function< NotificationResult(lsp::Notification&&) > handle_notification;
 			std::function< void() > pump;
 		};
 
@@ -85,9 +86,9 @@ namespace lsp_boot
 			auto typed_impl = std::forward< ImplementationInit >(implementation_init)(send_notify);
 			auto impl_ptr = typed_impl.get();
 			
-			auto make_message_handler = [&] {
+			auto make_message_handler = [&]< typename Result >(std::in_place_type_t< Result >) {
 				return [impl_ptr](auto&& msg) mutable {
-					return std::visit([&]< typename M >(M&& msg) -> GenericResult {
+					return std::visit([&]< typename M >(M&& msg) -> Result {
 						if constexpr (requires { (*impl_ptr)(std::move(msg)); })
 						{
 							return (*impl_ptr)(std::move(msg));
@@ -95,7 +96,7 @@ namespace lsp_boot
 						else
 						{
 							/* @todo: log unsupported/maybe check against our published capabilities. */
-							return boost::json::value{};
+							return Result{};
 						}
 					}, std::move(msg));
 					};
@@ -103,22 +104,27 @@ namespace lsp_boot
 
 			return ServerImplementation{
 				std::move(typed_impl),
-				make_message_handler(),
-				make_message_handler(),
+				make_message_handler(std::in_place_type< RequestResult >),
+				make_message_handler(std::in_place_type< NotificationResult >),
 				[impl_ptr] { impl_ptr->pump(); },
 			};
 		}
 
-		auto dispatch_request(std::string_view method, lsp::RawMessage&& msg) -> void;
-		auto dispatch_notification(std::string_view method, lsp::RawMessage&& msg) -> void;
-		auto dispatch_message(lsp::RawMessage&& msg) -> void;
+		struct InternalMessageResult
+		{
+			bool exit = false;
+		};
 
-		auto handle_request(lsp::Request request)
+		auto dispatch_request(std::string_view method, lsp::RawMessage&& msg) -> InternalMessageResult;
+		auto dispatch_notification(std::string_view method, lsp::RawMessage&& msg) -> InternalMessageResult;
+		auto dispatch_message(lsp::RawMessage&& msg) -> InternalMessageResult;
+
+		auto handle_request(lsp::Request request) -> RequestResult
 		{
 			return impl.handle_request(std::move(request));
 		}
 
-		auto handle_notification(lsp::Notification notification)
+		auto handle_notification(lsp::Notification notification) -> NotificationResult
 		{
 			return impl.handle_notification(std::move(notification));
 		}

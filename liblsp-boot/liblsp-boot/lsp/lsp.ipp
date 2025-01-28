@@ -138,12 +138,30 @@ namespace lsp_boot::lsp
 		RawMessage js;
 	};
 
+
+	export namespace requests
+	{
+		enum class Kinds
+		{
+			initialize,
+			shutdown,
+			document_symbols,
+			semantic_tokens,
+		};
+
+		using Initialize = JsonMessage< Kinds::initialize >;
+		using Shutdown = JsonMessage< Kinds::shutdown >;
+		using DocumentSymbols = JsonMessage< Kinds::document_symbols >;
+		using SemanticTokens = JsonMessage< Kinds::semantic_tokens >;
+	}
+
 	export namespace notifications
 	{
 		enum class Kinds
 		{
 			// From client
 			initialized,
+			exit,
 			did_open_text_document,
 			did_change_text_document,
 			did_close_text_document,
@@ -153,6 +171,8 @@ namespace lsp_boot::lsp
 		};
 
 		// From client
+		using Initialized = JsonMessage< Kinds::initialized >;
+		using Exit = JsonMessage< Kinds::exit >;
 		using DidOpenTextDocument = JsonMessage< Kinds::did_open_text_document >;
 		using DidChangeTextDocument = JsonMessage< Kinds::did_change_text_document >;
 		using DidCloseTextDocument = JsonMessage< Kinds::did_close_text_document >;
@@ -161,27 +181,16 @@ namespace lsp_boot::lsp
 		using PublishDiagnostics = JsonMessage< Kinds::publish_diagnostics >;
 	}
 
-	export namespace requests
-	{
-		enum class Kinds
-		{
-			initialize,
-			document_symbols,
-			semantic_tokens,
-		};
-
-		using Initialize = JsonMessage< Kinds::initialize >;
-		using DocumentSymbols = JsonMessage< Kinds::document_symbols >;
-		using SemanticTokens = JsonMessage< Kinds::semantic_tokens >;
-	}
-
 	export using Request = std::variant<
 		requests::Initialize,
+		requests::Shutdown,
 		requests::DocumentSymbols,
 		requests::SemanticTokens
 	>;
 
 	export using Notification = std::variant<
+		notifications::Initialized,
+		notifications::Exit,
 		notifications::DidOpenTextDocument,
 		notifications::DidChangeTextDocument,
 		notifications::DidCloseTextDocument
