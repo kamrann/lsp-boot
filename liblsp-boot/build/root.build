@@ -7,6 +7,7 @@ cxx.features.modules = true
 
 using cxx
 
+hxx{*}: extension = hpp
 mxx{*}: extension = ipp
 cxx{*}: extension = cpp
 

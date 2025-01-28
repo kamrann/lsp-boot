@@ -3,9 +3,9 @@ impl_libs = # Implementation dependencies.
 
 import intf_libs += libboost-json%lib{boost_json}
 
-lib{lsp-boot}: {mxx cxx}{** -version} $impl_libs $intf_libs #hxx{version} 
+lib{lsp-boot}: {mxx cxx}{**} hxx{version} $impl_libs $intf_libs
 
-#hxx{version}: in{version} $src_root/manifest
+hxx{version}: in{version} $src_root/manifest
 
 # Build options.
 #
@@ -31,7 +31,7 @@ else
 # Install into the liblsp-boot/ subdirectory of, say, /usr/include/
 # recreating subdirectories.
 #
-{mxx}{*}:
+{hxx mxx}{*}:
 {
   install         = include/liblsp-boot/
   install.subdirs = true
