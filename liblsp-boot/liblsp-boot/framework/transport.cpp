@@ -3,7 +3,7 @@ module;
 
 #include <boost/json.hpp>
 
-#if defined(lsp_boot_enable_import_std)
+#if defined(LSP_BOOT_ENABLE_IMPORT_STD)
 import std;
 #else
 #include <utility>

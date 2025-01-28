@@ -9,13 +9,16 @@ hxx{version}: in{version} $src_root/manifest
 
 # Build options.
 #
-cxx.poptions =+ "-I$out_root" "-I$src_root"
+cxx.poptions =+ "-I$out_root"
+
+if $config.liblsp_boot.enable_import_std
+  cxx.poptions += -DLSP_BOOT_ENABLE_IMPORT_STD
 
 # Export options.
 #
 lib{lsp-boot}:
 {
-  cxx.export.poptions = "-I$out_root" "-I$src_root"
+  cxx.export.poptions = "-I$out_root"
   cxx.export.libs = $intf_libs
 }
 
