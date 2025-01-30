@@ -37,6 +37,10 @@ namespace lsp_boot
 			//{
 			//	return handle_document_highlight(msg.at("params"));
 			//}
+			else if (method == "textDocument/inlayHint"sv)
+			{
+				return handle_request(requests::InlayHint(std::move(msg)));
+			}
 			else if (method == "textDocument/semanticTokens/full"sv)
 			{
 				return handle_request(requests::SemanticTokens(std::move(msg)));
