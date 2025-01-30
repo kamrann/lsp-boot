@@ -1,11 +1,14 @@
 
 module;
 
+#include <boost/json.hpp>
+
 #if defined(LSP_BOOT_ENABLE_IMPORT_STD)
 import std;
 #else
 #include <cstdint>
 #include <utility>
+#include <optional>
 #include <variant>
 #include <string>
 #include <string_view>
@@ -28,6 +31,17 @@ namespace lsp_boot::lsp
 		std::uint32_t line = 0;
 		std::uint32_t character = 0;
 
+		static auto from_json(json::value const& js) -> std::optional< Location >
+		{
+			auto const& obj = js.as_object();
+			auto const line = json::value_to< std::uint32_t >(obj.at("line"));
+			auto const character = json::value_to< std::uint32_t >(obj.at("character"));
+			return Location{
+				.line = line,
+				.character = character,
+			};
+		}
+
 		explicit operator json::value() const
 		{
 			return {
@@ -41,6 +55,16 @@ namespace lsp_boot::lsp
 	{
 		Location start;
 		Location end;
+
+		static auto from_json(json::value const& js) -> std::optional< Range >
+		{
+			auto const& obj = js.as_object();
+			return Location::from_json(obj.at("start")).and_then([&](auto&& start) {
+				return Location::from_json(obj.at("end")).transform([&](auto&& end) {
+					return Range{ start, end };
+					});
+				});
+		}
 
 		explicit operator json::value() const
 		{
@@ -146,12 +170,14 @@ namespace lsp_boot::lsp
 			initialize,
 			shutdown,
 			document_symbols,
+			inlay_hint,
 			semantic_tokens,
 		};
 
 		using Initialize = JsonMessage< Kinds::initialize >;
 		using Shutdown = JsonMessage< Kinds::shutdown >;
 		using DocumentSymbols = JsonMessage< Kinds::document_symbols >;
+		using InlayHint = JsonMessage< Kinds::inlay_hint >;
 		using SemanticTokens = JsonMessage< Kinds::semantic_tokens >;
 	}
 
@@ -185,6 +211,7 @@ namespace lsp_boot::lsp
 		requests::Initialize,
 		requests::Shutdown,
 		requests::DocumentSymbols,
+		requests::InlayHint,
 		requests::SemanticTokens
 	>;
 
