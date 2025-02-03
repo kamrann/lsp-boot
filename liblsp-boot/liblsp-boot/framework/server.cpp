@@ -1,12 +1,15 @@
 
 module;
 
+#include <boost/json/value_to.hpp>
+
 #if defined(LSP_BOOT_ENABLE_IMPORT_STD)
 import std;
 #else
 #include <utility>
 #include <optional>
 #include <string_view>
+#include <format>
 #endif
 
 module lsp_boot.server;
@@ -17,7 +20,7 @@ namespace lsp_boot
 {
 	using namespace lsp;
 
-	auto Server::dispatch_request(std::string_view const method, RawMessage&& msg) -> InternalMessageResult
+	auto Server::dispatch_request(std::string_view const method, lsp::RawMessage&& msg) -> InternalMessageResult
 	{
 		auto request_id = msg.at("id"sv);
 
@@ -62,7 +65,7 @@ namespace lsp_boot
 		return {};
 	}
 
-	auto Server::dispatch_notification(std::string_view const method, RawMessage&& msg) -> InternalMessageResult
+	auto Server::dispatch_notification(std::string_view const method, lsp::RawMessage&& msg) -> InternalMessageResult
 	{
 		if (method == "initialized"sv)
 		{
@@ -87,21 +90,40 @@ namespace lsp_boot
 		return {};
 	}
 
-	auto Server::dispatch_message(RawMessage&& msg) -> InternalMessageResult
+	auto Server::dispatch_message(ReceivedMessage&& msg) -> DispatchResult
 	{
-		if (auto id_it = msg.find("id"sv); id_it != msg.end())
-		{
-			if (auto method_it = msg.find("method"sv); method_it != msg.end())
-			{
-				return dispatch_request(method_it->value().as_string(), std::move(msg));
-			}
-		}
-		else if (auto method_it = msg.find("method"sv); method_it != msg.end())
-		{
-			return dispatch_notification(method_it->value().as_string(), std::move(msg));
-		}
+		auto const dispatch_start_timestamp = std::chrono::system_clock::now();
 
-		return {};
+		auto&& json_msg = msg.msg;
+		auto const id_it = json_msg.find("id"sv);
+		auto const method_it = json_msg.find("method"sv);
+
+		auto const result = [&] {
+			if (id_it != json_msg.end())
+			{
+				if (method_it != json_msg.end())
+				{
+					return dispatch_request(method_it->value().as_string(), std::move(json_msg));
+				}
+			}
+			else if (method_it != json_msg.end())
+			{
+				return dispatch_notification(method_it->value().as_string(), std::move(json_msg));
+			}
+			return InternalMessageResult{};
+			}();
+
+		auto const dispatch_completion_timestamp = std::chrono::system_clock::now();
+
+		return {
+			.identifier = std::format("{}:{}",
+				id_it != json_msg.end() ? value_to< std::string >(id_it->value()) : "?",
+				method_it != json_msg.end() ? method_it->value().as_string() : "?"),
+			.received = msg.received_time,
+			.dispatch_start = dispatch_start_timestamp,
+			.dispatch_end = dispatch_completion_timestamp,
+			.result = std::move(result)
+		};
 	}
 
 	auto Server::run() -> void
@@ -109,12 +131,23 @@ namespace lsp_boot
 		while (true)
 		{
 			auto msg = in_queue.pop();
-			if (auto result = dispatch_message(std::move(msg)); result.exit)
+			auto const result = dispatch_message(std::move(msg));
+			postprocess_message(result);
+			
+			if (result.result.exit)
 			{
 				break;
 			}
 			
 			impl.pump(); // @todo: placeholder, probably don't want to be doing this on the dispatching thread.
+		}
+	}
+
+	auto Server::postprocess_message(DispatchResult const& result) const -> void
+	{
+		if (metrics)
+		{
+			metrics(result.metrics());
 		}
 	}
 }

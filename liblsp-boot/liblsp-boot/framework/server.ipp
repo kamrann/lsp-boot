@@ -5,10 +5,12 @@ module;
 import std;
 #else
 #include <utility>
+#include <string>
 #include <string_view>
 #include <functional>
 #include <variant>
 #include <memory>
+#include <chrono>
 #endif
 
 export module lsp_boot.server;
@@ -45,6 +47,15 @@ namespace lsp_boot
 	//	NotificationHandler< notifications::DidCloseTextDocument >
 	//>;
 
+	export struct MessageMetrics
+	{
+		std::string identifier;
+		std::chrono::microseconds end_to_end;
+		std::chrono::microseconds dispatch;
+	};
+
+	using MetricsSink = std::function< void(MessageMetrics const&) >;
+
 	export class Server
 	{
 	public:
@@ -66,8 +77,9 @@ namespace lsp_boot
 		Server(
 			PendingInputQueue& pending_input_queue,
 			OutputQueue& output_queue,
-			ImplementationInit&& implementation_init)
-			: in_queue{ pending_input_queue }, out_queue{ output_queue }
+			ImplementationInit&& implementation_init,
+			MetricsSink metrics_sink = {})
+			: in_queue{ pending_input_queue }, out_queue{ output_queue }, metrics{ std::move(metrics_sink) }
 		{
 			impl = wrap_implementation(std::forward< ImplementationInit >(implementation_init));
 		}
@@ -112,12 +124,36 @@ namespace lsp_boot
 
 		struct InternalMessageResult
 		{
+			std::chrono::system_clock::time_point received;
+			std::chrono::system_clock::time_point dispatch_start;
+			std::chrono::system_clock::time_point dispatch_end;
+
 			bool exit = false;
+		};
+
+		struct DispatchResult
+		{
+			std::string identifier;
+
+			std::chrono::system_clock::time_point received;
+			std::chrono::system_clock::time_point dispatch_start;
+			std::chrono::system_clock::time_point dispatch_end;
+
+			InternalMessageResult result;
+
+			auto metrics() const -> MessageMetrics
+			{
+				return {
+					.identifier = identifier,
+					.end_to_end = std::chrono::duration_cast< std::chrono::microseconds >(dispatch_end - received),
+					.dispatch = std::chrono::duration_cast< std::chrono::microseconds >(dispatch_end - dispatch_start),
+				};
+			}
 		};
 
 		auto dispatch_request(std::string_view method, lsp::RawMessage&& msg) -> InternalMessageResult;
 		auto dispatch_notification(std::string_view method, lsp::RawMessage&& msg) -> InternalMessageResult;
-		auto dispatch_message(lsp::RawMessage&& msg) -> InternalMessageResult;
+		auto dispatch_message(ReceivedMessage&& msg) -> DispatchResult;
 
 		auto handle_request(lsp::Request request) -> RequestResult
 		{
@@ -129,9 +165,12 @@ namespace lsp_boot
 			return impl.handle_notification(std::move(notification));
 		}
 
+		auto postprocess_message(DispatchResult const&) const -> void;
+
 	private:
 		PendingInputQueue& in_queue;
 		OutputQueue& out_queue;
 		ServerImplementation impl;
+		MetricsSink metrics;
 	};
 }

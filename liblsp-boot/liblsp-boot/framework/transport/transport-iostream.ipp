@@ -37,7 +37,7 @@ namespace lsp_boot
 
 	private:
 		auto read_message_header() -> std::optional< MessageHeader >;
-		auto read_message() -> std::optional< MessageContent >;
+		auto read_message() -> std::optional< ReceivedMessage >;
 		auto send_message(MessageContent&& message) -> void;
 
 		auto process_output() -> void;

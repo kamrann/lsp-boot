@@ -13,6 +13,7 @@ import std;
 #include <istream>
 #include <memory>
 #include <thread>
+#include <chrono>
 #include <format>
 #endif
 
@@ -118,16 +119,20 @@ namespace lsp_boot
 		return header;
 	}
 
-	auto StreamConnection::read_message() -> std::optional< MessageContent >
+	auto StreamConnection::read_message() -> std::optional< ReceivedMessage >
 	{
-		return read_message_header().and_then([&](MessageHeader&& hdr) -> std::optional< MessageContent > {
+		return read_message_header().and_then([&](MessageHeader&& hdr) -> std::optional< ReceivedMessage > {
 			//lsp_assert(hdr.content_length > 0);
 			auto content = std::make_unique< char[] >(hdr.content_length);
 			in.read(content.get(), hdr.content_length);
+			auto timestamp = std::chrono::system_clock::now();
 			try
 			{
 				auto value = boost::json::parse(std::string_view{ content.get(), hdr.content_length });
-				return std::optional{ value.as_object() };
+				return ReceivedMessage{
+					.msg{ value.as_object() },
+					.received_time = timestamp,
+				};
 			}
 			catch (...)
 			{
