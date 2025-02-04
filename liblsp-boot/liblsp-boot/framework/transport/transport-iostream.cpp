@@ -1,8 +1,6 @@
 
 module;
 
-#include <boost/json.hpp>
-
 #if defined(LSP_BOOT_ENABLE_IMPORT_STD)
 import std;
 #else
@@ -19,7 +17,7 @@ import std;
 
 module lsp_boot.transport;
 
-import ext_mod_wrap.boost.json;
+import lsp_boot.ext_mod_wrap.boost.json;
 
 using namespace std::string_view_literals;
 

@@ -1,7 +1,10 @@
 
 module;
 
+// workaround: MSVC modules template specialization and boost::system::error_code
+#if defined(_MSC_VER) && !defined(__clang__)
 #include <boost/json/value_to.hpp>
+#endif
 
 #if defined(LSP_BOOT_ENABLE_IMPORT_STD)
 import std;

@@ -16,7 +16,7 @@ import :core;
 
 import lsp_boot.work_queue;
 
-import ext_mod_wrap.boost.json;
+import lsp_boot.ext_mod_wrap.boost.json;
 
 namespace lsp_boot
 {

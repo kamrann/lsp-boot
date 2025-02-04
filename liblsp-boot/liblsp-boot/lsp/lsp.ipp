@@ -1,7 +1,10 @@
 
 module;
 
-#include <boost/json.hpp>
+// workaround: MSVC modules template specialization and boost::system::error_code
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <boost/json/value_to.hpp>
+#endif
 
 #if defined(LSP_BOOT_ENABLE_IMPORT_STD)
 import std;
@@ -17,7 +20,7 @@ import std;
 
 export module lsp_boot.lsp;
 
-import ext_mod_wrap.boost.json;
+import lsp_boot.ext_mod_wrap.boost.json;
 
 namespace lsp_boot::lsp
 {

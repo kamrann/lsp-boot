@@ -1,8 +1,6 @@
 
 #include <liblsp-boot/version.hpp>
 
-#include <boost/json.hpp>
-
 #include <string_view>
 #include <sstream>
 #include <format>
@@ -16,6 +14,7 @@
 #include <cassert>
 
 import lsp_boot;
+import lsp_boot.ext_mod_wrap.boost.json;
 import example_impl;
 
 using namespace std::string_view_literals;

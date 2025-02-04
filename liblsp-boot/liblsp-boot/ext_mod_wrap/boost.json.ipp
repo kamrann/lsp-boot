@@ -4,7 +4,7 @@ module;
 
 #include <boost/json.hpp>
 
-export module ext_mod_wrap.boost.json;
+export module lsp_boot.ext_mod_wrap.boost.json;
 
 namespace bj = boost::json;
 

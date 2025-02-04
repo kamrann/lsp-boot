@@ -10,7 +10,7 @@ import std;
 
 export module lsp_boot.transport:core;
 
-import ext_mod_wrap.boost.json;
+import lsp_boot.ext_mod_wrap.boost.json;
 
 namespace lsp_boot
 {
