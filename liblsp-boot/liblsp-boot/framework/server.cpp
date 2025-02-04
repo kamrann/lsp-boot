@@ -25,7 +25,7 @@ namespace lsp_boot
 
 	auto Server::dispatch_request(std::string_view const method, lsp::RawMessage&& msg) -> InternalMessageResult
 	{
-		auto request_id = msg.at("id"sv);
+		auto request_id = msg.at(keys::id);
 
 		// @todo: not sure how best to appoach this, but as we currently return the request result synchronously we need to ensure that
 		// any pending notifications or prior requests that could potentially affect our result have already been processed.
@@ -35,27 +35,28 @@ namespace lsp_boot
 		impl.pump();
 
 		auto result = [&]() -> std::optional< RequestResult > {
-			if (method == "initialize"sv)
+			// @todo: consider dispatching via type list
+			if (method == requests::Initialize::name)
 			{
 				return handle_request(requests::Initialize(std::move(msg)));
 			}
-			else if (method == "shutdown"sv)
+			else if (method == requests::Shutdown::name)
 			{
 				return handle_request(requests::Shutdown(std::move(msg)));
 			}
-			//else if (method == "textDocument/documentHighlight"sv)
+			//else if (method == requests::DocumentHighlight::name)
 			//{
-			//	return handle_document_highlight(msg.at("params"));
+			//	return handle_request(requests::DocumentHighlight(std::move(msg)));
 			//}
-			else if (method == "textDocument/inlayHint"sv)
+			else if (method == requests::InlayHint::name)
 			{
 				return handle_request(requests::InlayHint(std::move(msg)));
 			}
-			else if (method == "textDocument/semanticTokens/full"sv)
+			else if (method == requests::SemanticTokens::name)
 			{
 				return handle_request(requests::SemanticTokens(std::move(msg)));
 			}
-			else if (method == "textDocument/documentSymbol"sv)
+			else if (method == requests::DocumentSymbols::name)
 			{
 				return handle_request(requests::DocumentSymbols(std::move(msg)));
 			}
@@ -69,8 +70,8 @@ namespace lsp_boot
 		// feels inconsistent, and likely will want to allow an implementation to generate an async response - though could do that with similar approach using a future.
 		auto temp_todo_err = std::move(result).transform([&](RequestResult&& result) {
 			auto response = boost::json::object{
-				{ "id"sv, std::move(request_id) },
-				{ "result"sv, std::move(result) },
+				{ keys::id, std::move(request_id) },
+				{ keys::result, std::move(result) },
 			};
 			out_queue.push(std::move(response));
 			return true;
@@ -81,24 +82,28 @@ namespace lsp_boot
 
 	auto Server::dispatch_notification(std::string_view const method, lsp::RawMessage&& msg) -> InternalMessageResult
 	{
-		if (method == "initialized"sv)
+		if (method == notifications::Initialized::name)
 		{
 			// client initialization completed
 			handle_notification(notifications::Initialized(std::move(msg)));
 		}
-		else if (method == "exit"sv)
+		else if (method == notifications::Exit::name)
 		{
 			return {
 				.exit = true,
 			};
 		}
-		else if (method == "textDocument/didOpen"sv)
+		else if (method == notifications::DidOpenTextDocument::name)
 		{
 			handle_notification(notifications::DidOpenTextDocument(std::move(msg)));
 		}
-		else if (method == "textDocument/didChange"sv)
+		else if (method == notifications::DidChangeTextDocument::name)
 		{
 			handle_notification(notifications::DidChangeTextDocument(std::move(msg)));
+		}
+		else if (method == notifications::DidCloseTextDocument::name)
+		{
+			handle_notification(notifications::DidCloseTextDocument(std::move(msg)));
 		}
 
 		return {};
@@ -109,17 +114,17 @@ namespace lsp_boot
 		auto const dispatch_start_timestamp = std::chrono::system_clock::now();
 
 		auto&& json_msg = msg.msg;
-		auto const id_it = json_msg.find("id"sv);
-		auto const method_it = json_msg.find("method"sv);
+		auto const id_it = json_msg.find(keys::id);
+		auto const method_it = json_msg.find(keys::method);
 
 		auto const extract_document_id = [&]() -> std::string_view {
 			// @todo: intention is to include the readable name of the document. to do so will need to move top level control of the active documents
 			// from the implementation into the base server. which probably does make sense to do.
 			try
 			{
-				return json_msg.at("params"sv).as_object()
-					.at("textDocument"sv).as_object()
-					.at("uri"sv).as_string();
+				return message_params(json_msg)
+					.at(keys::text_document).as_object()
+					.at(keys::uri).as_string();
 			}
 			catch (...)
 			{

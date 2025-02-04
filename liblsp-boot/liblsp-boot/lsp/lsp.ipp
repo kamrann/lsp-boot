@@ -20,11 +20,42 @@ import std;
 
 export module lsp_boot.lsp;
 
+import lsp_boot.utility;
 import lsp_boot.ext_mod_wrap.boost.json;
 
 namespace lsp_boot::lsp
 {
 	namespace json = boost::json;
+
+	export namespace keys
+	{
+		using namespace std::string_view_literals;
+
+		constexpr auto capabilities = "capabilities"sv;
+		constexpr auto params = "params"sv;
+		constexpr auto id = "id"sv;
+		constexpr auto result = "result"sv;
+		constexpr auto method = "method"sv;
+		constexpr auto text_document = "textDocument"sv;
+		constexpr auto uri = "uri"sv;
+		constexpr auto range = "range"sv;
+		constexpr auto selection_range = "selectionRange"sv;
+		constexpr auto position = "position"sv;
+		constexpr auto start = "start"sv;
+		constexpr auto end = "end"sv;
+		constexpr auto line = "line"sv;
+		constexpr auto character = "character"sv;
+		constexpr auto name = "name"sv;
+		constexpr auto kind = "kind"sv;
+		constexpr auto text = "text"sv;
+		constexpr auto content_changes = "contentChanges"sv;
+		constexpr auto message = "message"sv;
+		constexpr auto data = "data"sv;
+		constexpr auto label = "label"sv;
+		constexpr auto diagnostics = "diagnostics"sv;
+		constexpr auto token_types = "tokenTypes"sv;
+		constexpr auto token_modifiers = "tokenModifiers"sv;
+	}
 
 	export using DocumentURI = std::string;
 	export using DocumentContent = std::string;
@@ -37,8 +68,8 @@ namespace lsp_boot::lsp
 		static auto from_json(json::value const& js) -> std::optional< Location >
 		{
 			auto const& obj = js.as_object();
-			auto const line = json::value_to< std::uint32_t >(obj.at("line"));
-			auto const character = json::value_to< std::uint32_t >(obj.at("character"));
+			auto const line = json::value_to< std::uint32_t >(obj.at(keys::line));
+			auto const character = json::value_to< std::uint32_t >(obj.at(keys::character));
 			return Location{
 				.line = line,
 				.character = character,
@@ -48,8 +79,8 @@ namespace lsp_boot::lsp
 		explicit operator json::value() const
 		{
 			return {
-				{ "line", json::value(line) },
-				{ "character", json::value(character) },
+				{ keys::line, json::value(line) },
+				{ keys::character, json::value(character) },
 			};
 		}
 	};
@@ -62,8 +93,8 @@ namespace lsp_boot::lsp
 		static auto from_json(json::value const& js) -> std::optional< Range >
 		{
 			auto const& obj = js.as_object();
-			return Location::from_json(obj.at("start")).and_then([&](auto&& start) {
-				return Location::from_json(obj.at("end")).transform([&](auto&& end) {
+			return Location::from_json(obj.at(keys::start)).and_then([&](auto&& start) {
+				return Location::from_json(obj.at(keys::end)).transform([&](auto&& end) {
 					return Range{ start, end };
 					});
 				});
@@ -72,8 +103,8 @@ namespace lsp_boot::lsp
 		explicit operator json::value() const
 		{
 			return {
-				{ "start", json::value(start) },
-				{ "end", json::value(end) },
+				{ keys::start, json::value(start) },
+				{ keys::end, json::value(end) },
 			};
 		}
 	};
@@ -131,14 +162,22 @@ namespace lsp_boot::lsp
 
 	export using RawMessage = json::object;
 
+	export auto message_params(RawMessage const& msg) -> auto const&
+	{
+		return msg.at(keys::params);
+	}
+
 	// @note: short term approach is to just use the boost.json types directly, but adding wrapper to allow for static type differentiation.
 	// code gen of proper types from the LSP is probably the way to go.
 
-	export template < auto MsgId >
+	export template < auto msg_id, FixedString msg_name >
 	class JsonMessage
 	{
 	public:
 		using RawMessage = json::object;
+
+		static constexpr auto raw_name = msg_name;
+		static constexpr auto name = std::string_view{ raw_name };
 
 		JsonMessage(RawMessage&& raw) : js{ std::move(raw) }
 		{
@@ -161,6 +200,11 @@ namespace lsp_boot::lsp
 			return &js;
 		}
 
+		auto params() -> auto const&
+		{
+			return message_params(js);
+		}
+
 	private:
 		RawMessage js;
 	};
@@ -177,11 +221,11 @@ namespace lsp_boot::lsp
 			semantic_tokens,
 		};
 
-		using Initialize = JsonMessage< Kinds::initialize >;
-		using Shutdown = JsonMessage< Kinds::shutdown >;
-		using DocumentSymbols = JsonMessage< Kinds::document_symbols >;
-		using InlayHint = JsonMessage< Kinds::inlay_hint >;
-		using SemanticTokens = JsonMessage< Kinds::semantic_tokens >;
+		using Initialize = JsonMessage< Kinds::initialize, "initialize" >;
+		using Shutdown = JsonMessage< Kinds::shutdown, "shutdown" >;
+		using DocumentSymbols = JsonMessage< Kinds::document_symbols, "textDocument/documentSymbol" >;
+		using InlayHint = JsonMessage< Kinds::inlay_hint, "textDocument/inlayHint" >;
+		using SemanticTokens = JsonMessage< Kinds::semantic_tokens, "textDocument/semanticTokens/full" >;
 	}
 
 	export namespace notifications
@@ -200,14 +244,14 @@ namespace lsp_boot::lsp
 		};
 
 		// From client
-		using Initialized = JsonMessage< Kinds::initialized >;
-		using Exit = JsonMessage< Kinds::exit >;
-		using DidOpenTextDocument = JsonMessage< Kinds::did_open_text_document >;
-		using DidChangeTextDocument = JsonMessage< Kinds::did_change_text_document >;
-		using DidCloseTextDocument = JsonMessage< Kinds::did_close_text_document >;
+		using Initialized = JsonMessage< Kinds::initialized, "initialized" >;
+		using Exit = JsonMessage< Kinds::exit, "exit" >;
+		using DidOpenTextDocument = JsonMessage< Kinds::did_open_text_document, "textDocument/didOpen" >;
+		using DidChangeTextDocument = JsonMessage< Kinds::did_change_text_document, "textDocument/didChange" >;
+		using DidCloseTextDocument = JsonMessage< Kinds::did_close_text_document, "textDocument/didClose" >;
 
 		// From server
-		using PublishDiagnostics = JsonMessage< Kinds::publish_diagnostics >;
+		using PublishDiagnostics = JsonMessage< Kinds::publish_diagnostics, "textDocument/publishDiagnostics" >;
 	}
 
 	export using Request = std::variant<
