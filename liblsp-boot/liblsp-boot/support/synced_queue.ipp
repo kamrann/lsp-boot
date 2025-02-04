@@ -5,6 +5,7 @@ module;
 import std;
 #else
 #include <queue>
+#include <optional>
 #include <mutex>
 #include <condition_variable>
 #endif
@@ -35,6 +36,18 @@ namespace lsp_boot
 			auto value = std::move(queue.front());
 			queue.pop();
 			return value;
+		}
+
+		auto try_pop() -> std::optional< T >
+		{
+			auto lock = std::scoped_lock{ mtx };
+			if (!queue.empty())
+			{
+				auto value = std::move(queue.front());
+				queue.pop();
+				return value;
+			}
+			return std::nullopt;
 		}
 
 	private:
