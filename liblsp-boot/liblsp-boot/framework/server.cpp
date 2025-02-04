@@ -24,6 +24,13 @@ namespace lsp_boot
 	{
 		auto request_id = msg.at("id"sv);
 
+		// @todo: not sure how best to appoach this, but as we currently return the request result synchronously we need to ensure that
+		// any pending notifications or prior requests that could potentially affect our result have already been processed.
+		// this would be fairly complex to try to handle based on what notifications there were and in what order they came, so for now
+		// we simply enforce synchronization before each request.
+		// may want to consider at least making the response async so we can move the pump invocation off the server dispatching thread.
+		impl.pump();
+
 		auto result = [&]() -> std::optional< RequestResult > {
 			if (method == "initialize"sv)
 			{
@@ -142,8 +149,6 @@ namespace lsp_boot
 			{
 				break;
 			}
-			
-			impl.pump(); // @todo: placeholder, probably don't want to be doing this on the dispatching thread.
 		}
 	}
 
