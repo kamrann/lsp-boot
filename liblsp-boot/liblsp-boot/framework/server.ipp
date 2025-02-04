@@ -50,7 +50,7 @@ namespace lsp_boot
 	export struct MessageMetrics
 	{
 		std::string identifier;
-		std::chrono::microseconds end_to_end;
+		std::chrono::microseconds response;
 		std::chrono::microseconds dispatch;
 	};
 
@@ -145,7 +145,7 @@ namespace lsp_boot
 			{
 				return {
 					.identifier = identifier,
-					.end_to_end = std::chrono::duration_cast< std::chrono::microseconds >(dispatch_end - received),
+					.response = std::chrono::duration_cast< std::chrono::microseconds >(dispatch_end - received),
 					.dispatch = std::chrono::duration_cast< std::chrono::microseconds >(dispatch_end - dispatch_start),
 				};
 			}

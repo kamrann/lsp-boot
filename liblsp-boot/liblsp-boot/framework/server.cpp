@@ -109,6 +109,26 @@ namespace lsp_boot
 		auto const id_it = json_msg.find("id"sv);
 		auto const method_it = json_msg.find("method"sv);
 
+		auto const extract_document_id = [&]() -> std::string_view {
+			// @todo: intention is to include the readable name of the document. to do so will need to move top level control of the active documents
+			// from the implementation into the base server. which probably does make sense to do.
+			try
+			{
+				return json_msg.at("params"sv).as_object()
+					.at("textDocument"sv).as_object()
+					.at("uri"sv).as_string();
+			}
+			catch (...)
+			{
+				return "?"sv;
+			}
+			};
+
+		auto identifier = std::format("{}:{} [{}]",
+			id_it != json_msg.end() ? std::to_string(value_to< std::uint64_t >(id_it->value())) : "?",
+			method_it != json_msg.end() ? std::string_view{ method_it->value().as_string() } : "?"sv,
+			extract_document_id());
+
 		auto const result = [&] {
 			if (id_it != json_msg.end())
 			{
@@ -127,9 +147,7 @@ namespace lsp_boot
 		auto const dispatch_completion_timestamp = std::chrono::system_clock::now();
 
 		return {
-			.identifier = std::format("{}:{}",
-				id_it != json_msg.end() ? value_to< std::string >(id_it->value()) : "?",
-				method_it != json_msg.end() ? method_it->value().as_string() : "?"),
+			.identifier = identifier,
 			.received = msg.received_time,
 			.dispatch_start = dispatch_start_timestamp,
 			.dispatch_end = dispatch_completion_timestamp,
