@@ -124,10 +124,6 @@ namespace lsp_boot
 
 		struct InternalMessageResult
 		{
-			std::chrono::system_clock::time_point received;
-			std::chrono::system_clock::time_point dispatch_start;
-			std::chrono::system_clock::time_point dispatch_end;
-
 			bool exit = false;
 		};
 
