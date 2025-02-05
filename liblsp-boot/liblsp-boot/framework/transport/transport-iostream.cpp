@@ -13,7 +13,9 @@ import std;
 #include <thread>
 #include <chrono>
 #include <format>
+#include <thread>
 #endif
+#include <version>
 
 module lsp_boot.transport;
 
@@ -24,6 +26,12 @@ using namespace std::string_view_literals;
 
 namespace lsp_boot
 {
+#if defined(__cpp_lib_jthread)
+	using Thread = std::jthread;
+#else
+	using Thread = std::thread;
+#endif
+
 	auto StreamConnection::send_message(MessageContent&& message) -> void
 	{
 		auto content = boost::json::serialize(message);
@@ -151,7 +159,7 @@ namespace lsp_boot
 
 	auto StreamConnection::listen() -> int
 	{
-		std::jthread out_thread([this] {
+		Thread out_thread([this] {
 			process_output();
 
 			err << "StreamConnection output processor shutting down..." << std::endl;

@@ -9,6 +9,7 @@
 #include <future>
 #include <thread>
 #include <chrono>
+#include <version>
 
 #undef NDEBUG
 #include <cassert>
@@ -19,6 +20,12 @@ import example_impl;
 
 using namespace std::string_view_literals;
 using namespace std::chrono_literals;
+
+#if defined(__cpp_lib_jthread)
+using Thread = std::jthread;
+#else
+using Thread = std::thread;
+#endif
 
 unsigned long message_counter = 0;
 
@@ -72,7 +79,7 @@ int main ()
 			};
 
 		auto server = lsp_boot::Server(input_queue, output_queue, server_impl_init);
-		auto server_thread = std::jthread([&] {
+		auto server_thread = Thread([&] {
 			server.run();
 			std::cerr << "Server execution completed." << std::endl;
 			});
