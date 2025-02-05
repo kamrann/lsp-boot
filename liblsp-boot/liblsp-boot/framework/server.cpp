@@ -170,10 +170,17 @@ namespace lsp_boot
 		while (true)
 		{
 			auto msg = in_queue.pop();
-			auto const result = dispatch_message(std::move(msg));
-			postprocess_message(result);
-			
-			if (result.result.exit)
+			try
+			{
+				auto const result = dispatch_message(std::move(msg));
+				postprocess_message(result);
+
+				if (result.result.exit)
+				{
+					break;
+				}
+			}
+			catch (...)
 			{
 				break;
 			}

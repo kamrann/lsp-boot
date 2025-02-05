@@ -137,6 +137,7 @@ namespace lsp_boot
 			}
 			catch (...)
 			{
+				err << "Failure parsing received JSON" << std::endl;
 				return std::nullopt;
 			}
 			});
