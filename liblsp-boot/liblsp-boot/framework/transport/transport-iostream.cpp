@@ -15,23 +15,17 @@ import std;
 #include <format>
 #include <thread>
 #endif
-#include <version>
 
 module lsp_boot.transport;
 
 import lsp_boot.work_queue; // really clang?
 import lsp_boot.ext_mod_wrap.boost.json;
+import lsp_boot.utility;
 
 using namespace std::string_view_literals;
 
 namespace lsp_boot
 {
-#if defined(__cpp_lib_jthread)
-	using Thread = std::jthread;
-#else
-	using Thread = std::thread;
-#endif
-
 	auto StreamConnection::send_message(MessageContent&& message) -> void
 	{
 		auto content = boost::json::serialize(message);

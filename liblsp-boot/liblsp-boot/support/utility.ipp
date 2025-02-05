@@ -5,10 +5,14 @@ module;
 import std;
 #else
 #include <cstddef>
+#include <concepts>
 #include <utility>
 #include <array>
 #include <string_view>
+#include <thread>
 #endif
+
+#include <version>
 
 export module lsp_boot.utility;
 
@@ -41,4 +45,23 @@ namespace lsp_boot
     // Passing a non-null terminated array of characters will result in truncation of the last character.
     template< std::size_t len >
     FixedString(char const (&)[len]) -> FixedString< len - 1 >;
+
+
+#if defined(__cpp_lib_jthread)
+    export using Thread = std::jthread;
+#else
+    export struct Thread
+    {
+        std::thread t;
+
+        Thread(std::invocable auto&& f, auto&&... args) : t(std::forward< decltype(f) >(f), std::forward< decltype(args) >(args)...)
+        {
+        }
+
+        ~Thread()
+        {
+            t.join();
+        }
+    };
+#endif
 }

@@ -9,23 +9,17 @@
 #include <future>
 #include <thread>
 #include <chrono>
-#include <version>
 
 #undef NDEBUG
 #include <cassert>
 
 import lsp_boot;
 import lsp_boot.ext_mod_wrap.boost.json;
+import lsp_boot.utility;
 import example_impl;
 
 using namespace std::string_view_literals;
 using namespace std::chrono_literals;
-
-#if defined(__cpp_lib_jthread)
-using Thread = std::jthread;
-#else
-using Thread = std::thread;
-#endif
 
 unsigned long message_counter = 0;
 
@@ -79,7 +73,7 @@ int main ()
 			};
 
 		auto server = lsp_boot::Server(input_queue, output_queue, server_impl_init);
-		auto server_thread = Thread([&] {
+		auto server_thread = lsp_boot::Thread([&] {
 			server.run();
 			std::cerr << "Server execution completed." << std::endl;
 			});
