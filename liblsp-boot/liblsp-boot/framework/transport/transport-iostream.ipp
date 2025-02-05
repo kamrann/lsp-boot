@@ -15,7 +15,6 @@ export module lsp_boot.transport:iostream;
 import :core;
 
 import lsp_boot.work_queue;
-
 import lsp_boot.ext_mod_wrap.boost.json;
 
 namespace lsp_boot

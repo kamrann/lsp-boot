@@ -17,6 +17,7 @@ import std;
 
 module lsp_boot.transport;
 
+import lsp_boot.work_queue; // really clang?
 import lsp_boot.ext_mod_wrap.boost.json;
 
 using namespace std::string_view_literals;
