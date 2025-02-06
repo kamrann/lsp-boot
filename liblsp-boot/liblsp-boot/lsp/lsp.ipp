@@ -144,10 +144,13 @@ namespace lsp_boot::lsp
 	{
 		keyword = 0,
 		type,
+		enum_,
+		enum_member,
 		parameter,
 		variable,
 		function,
 		string,
+		regexp,
 		number,
 		comment,
 	};
@@ -155,10 +158,13 @@ namespace lsp_boot::lsp
 	export constexpr auto semantic_token_types = std::to_array< std::string_view >({
 		"keyword",
 		"type",
+		"enum"
+		"enumMember"
 		"parameter",
 		"variable",
 		"function",
 		"string",
+		"regexp",
 		"number",
 		"comment",
 		});
