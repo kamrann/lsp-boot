@@ -72,6 +72,7 @@ namespace lsp_boot
 		// feels inconsistent, and likely will want to allow an implementation to generate an async response - though could do that with similar approach using a future.
 		auto temp_todo_err = std::move(result).transform([&](RequestResult&& result) {
 			auto response = boost::json::object{
+				{ "jsonrpc", "2.0" },
 				{ keys::id, std::move(request_id) },
 				{ keys::result, std::move(result) },
 			};
