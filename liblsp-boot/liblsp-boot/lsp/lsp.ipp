@@ -236,7 +236,7 @@ namespace lsp_boot::lsp
 			return &js;
 		}
 
-		auto params() -> auto const&
+		auto params() const -> auto const&
 		{
 			return message_params(js);
 		}
