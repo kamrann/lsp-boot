@@ -67,7 +67,7 @@ namespace lsp_boot::lsp
 		std::uint32_t line = 0;
 		std::uint32_t character = 0;
 
-		static auto from_json(json::value const& js) -> std::optional< Location >
+		static auto from_json(json::value const& js) -> Location
 		{
 			auto const& obj = js.as_object();
 			auto const line = json::value_to< std::uint32_t >(obj.at(keys::line));
@@ -92,14 +92,13 @@ namespace lsp_boot::lsp
 		Location start;
 		Location end;
 
-		static auto from_json(json::value const& js) -> std::optional< Range >
+		static auto from_json(json::value const& js) -> Range
 		{
 			auto const& obj = js.as_object();
-			return Location::from_json(obj.at(keys::start)).and_then([&](auto&& start) {
-				return Location::from_json(obj.at(keys::end)).transform([&](auto&& end) {
-					return Range{ start, end };
-					});
-				});
+			return Range{
+				Location::from_json(obj.at(keys::start)),
+				Location::from_json(obj.at(keys::end)),
+			};
 		}
 
 		explicit operator json::value() const
