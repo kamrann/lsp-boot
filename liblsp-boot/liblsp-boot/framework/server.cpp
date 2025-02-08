@@ -54,9 +54,13 @@ namespace lsp_boot
 			{
 				return handle_request(requests::InlayHint(std::move(msg)));
 			}
-			else if (method == requests::SemanticTokens::name)
+			else if (method == requests::SemanticTokensFull::name)
 			{
-				return handle_request(requests::SemanticTokens(std::move(msg)));
+				return handle_request(requests::SemanticTokensFull(std::move(msg)));
+			}
+			else if (method == requests::SemanticTokensRange::name)
+			{
+				return handle_request(requests::SemanticTokensRange(std::move(msg)));
 			}
 			else if (method == requests::DocumentSymbols::name)
 			{

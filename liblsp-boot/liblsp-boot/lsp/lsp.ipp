@@ -256,14 +256,16 @@ namespace lsp_boot::lsp
 			shutdown,
 			document_symbols,
 			inlay_hint,
-			semantic_tokens,
+			semantic_tokens_full,
+			semantic_tokens_range,
 		};
 
 		using Initialize = JsonMessage< Kinds::initialize, "initialize" >;
 		using Shutdown = JsonMessage< Kinds::shutdown, "shutdown" >;
 		using DocumentSymbols = JsonMessage< Kinds::document_symbols, "textDocument/documentSymbol" >;
 		using InlayHint = JsonMessage< Kinds::inlay_hint, "textDocument/inlayHint" >;
-		using SemanticTokens = JsonMessage< Kinds::semantic_tokens, "textDocument/semanticTokens/full" >;
+		using SemanticTokensFull = JsonMessage< Kinds::semantic_tokens_full, "textDocument/semanticTokens/full" >;
+		using SemanticTokensRange = JsonMessage< Kinds::semantic_tokens_range, "textDocument/semanticTokens/range" >;
 	}
 
 	export namespace notifications
@@ -297,7 +299,8 @@ namespace lsp_boot::lsp
 		requests::Shutdown,
 		requests::DocumentSymbols,
 		requests::InlayHint,
-		requests::SemanticTokens
+		requests::SemanticTokensFull,
+		requests::SemanticTokensRange
 	>;
 
 	export using Notification = std::variant<
