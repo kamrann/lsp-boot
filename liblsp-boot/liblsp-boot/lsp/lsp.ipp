@@ -17,6 +17,7 @@ import std;
 #include <string_view>
 #include <array>
 #include <vector>
+#include <ranges>
 #endif
 
 export module lsp_boot.lsp;
@@ -169,37 +170,32 @@ namespace lsp_boot::lsp
 		"comment",
 		});
 
-	/**
-	 * @tokens Range of tuples (line_index, character_offset, length, semantic_token_type), with the character offset being relative to the start of the line.
-	 */
-	export auto generate_semantic_token_deltas(std::ranges::sized_range auto&& tokens) -> std::vector< unsigned int >
+	export enum SemanticTokenModifier
 	{
-		std::vector< unsigned int > tokens_data;
-		tokens_data.reserve(std::ranges::size(tokens) * 5);
+		declaration = 0,
+		definition,
+		readonly,
+		static_,
+		deprecated,
+		abstract,
+		async,
+		modification,
+		documentation,
+		defaultLibrary,
+	};
 
-		unsigned int prev_line = 0;
-		unsigned int prev_offset = 0;
-		for (auto const& [line_index, char_offset, len, stt] : tokens)
-		{
-			auto const line_delta = unsigned(line_index - prev_line);
-			bool const is_new_line = line_delta > 0;
-			unsigned const char_delta = is_new_line ? char_offset : (char_offset - prev_offset);
-			tokens_data.append_range(std::array< unsigned int, 5 >{
-				line_delta, // line delta
-				char_delta, // char delta
-				unsigned(len), // token length
-				unsigned(stt), // token type index
-				0 // modifiers mask
-			});
-			if (is_new_line)
-			{
-				prev_line = line_index;
-			}
-			prev_offset = char_offset;
-		}
-
-		return tokens_data;
-	}
+	export constexpr auto semantic_token_modifiers = std::to_array< std::string_view >({
+		"declaration",
+		"definition",
+		"readonly",
+		"static",
+		"deprecated",
+		"abstract",
+		"async",
+		"modification",
+		"documentation",
+		"defaultLibrary",
+		});
 
 
 	export using RawMessage = json::object;
