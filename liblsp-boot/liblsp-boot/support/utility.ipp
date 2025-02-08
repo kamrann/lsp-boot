@@ -47,6 +47,48 @@ namespace lsp_boot
     FixedString(char const (&)[len]) -> FixedString< len - 1 >;
 
 
+    export struct LineRange
+    {
+        static auto from_start_and_count(std::size_t const start, std::size_t const count)
+        {
+            return LineRange{ start, start + count };
+        }
+
+        static auto from_start_and_end_exclusive(std::size_t const start, std::size_t const end)
+        {
+            return LineRange{ start, end };
+        }
+
+        static auto from_start_and_end_inclusive(std::size_t const start, std::size_t const end)
+        {
+            return LineRange{ start, end + 1 };
+        }
+
+        auto start() const
+        {
+            return start_;
+        }
+
+        auto end() const
+        {
+            return end_;
+        }
+
+        auto size() const
+        {
+            return end_ - start_;
+        }
+
+    private:
+        LineRange(std::size_t const start_index, std::size_t const end_index) : start_{ start_index }, end_{ end_index }
+        {
+        }
+
+        std::size_t start_;
+        std::size_t end_; // exclusive
+    };
+
+
 #if defined(__cpp_lib_jthread)
     export using Thread = std::jthread;
 #else
