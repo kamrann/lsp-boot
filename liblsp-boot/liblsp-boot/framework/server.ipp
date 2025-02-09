@@ -11,6 +11,7 @@ import std;
 #include <variant>
 #include <memory>
 #include <chrono>
+#include <atomic>
 #endif
 
 export module lsp_boot.server;
@@ -85,6 +86,7 @@ namespace lsp_boot
 		}
 
 		auto run() -> void;
+		auto request_shutdown() -> void;
 
 	private:
 		template < typename ImplementationInit >
@@ -168,5 +170,6 @@ namespace lsp_boot
 		OutputQueue& out_queue;
 		ServerImplementation impl;
 		MetricsSink metrics;
+		std::atomic< bool > shutdown;
 	};
 }

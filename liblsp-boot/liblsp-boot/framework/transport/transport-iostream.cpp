@@ -147,8 +147,10 @@ namespace lsp_boot
 	{
 		while (!shutdown)
 		{
-			auto msg = out_queue.pop();
-			send_message(std::move(msg));
+			if (auto msg = out_queue.pop_with_abort([this] { return shutdown.load(); }); msg.has_value())
+			{
+				send_message(std::move(*msg));
+			}
 		}
 	}
 
@@ -175,6 +177,7 @@ namespace lsp_boot
 		}
 		err << "StreamConnection shutting down..." << std::endl;
 		shutdown = true;
+		out_queue.notify();
 		return in.good() || in.eof() ? 0 : -1;
 	}
 }

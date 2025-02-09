@@ -172,24 +172,32 @@ namespace lsp_boot
 
 	auto Server::run() -> void
 	{
-		while (true)
+		while (!shutdown)
 		{
-			auto msg = in_queue.pop();
-			try
+			if (auto msg = in_queue.pop_with_abort([this] { return shutdown.load(); }); msg.has_value())
 			{
-				auto const result = dispatch_message(std::move(msg));
-				postprocess_message(result);
+				try
+				{
+					auto const result = dispatch_message(std::move(*msg));
+					postprocess_message(result);
 
-				if (result.result.exit)
+					if (result.result.exit)
+					{
+						break;
+					}
+				}
+				catch (...)
 				{
 					break;
 				}
 			}
-			catch (...)
-			{
-				break;
-			}
 		}
+	}
+
+	auto Server::request_shutdown() -> void
+	{
+		shutdown = true;
+		in_queue.notify();
 	}
 
 	auto Server::postprocess_message(DispatchResult const& result) const -> void

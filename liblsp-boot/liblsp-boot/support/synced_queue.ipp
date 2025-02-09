@@ -38,6 +38,24 @@ namespace lsp_boot
 			return value;
 		}
 
+		auto pop_with_abort(auto should_abort) -> std::optional< T >
+		{
+			auto lock = std::unique_lock{ mtx };
+			cvar.wait(lock, [this, should_abort] {
+				return !queue.empty() || should_abort();
+				});
+			if (!queue.empty())
+			{
+				auto value = std::move(queue.front());
+				queue.pop();
+				return value;
+			}
+			else
+			{
+				return std::nullopt;
+			}
+		}
+
 		auto try_pop() -> std::optional< T >
 		{
 			auto lock = std::scoped_lock{ mtx };
@@ -48,6 +66,11 @@ namespace lsp_boot
 				return value;
 			}
 			return std::nullopt;
+		}
+
+		auto notify() -> void
+		{
+			cvar.notify_all();
 		}
 
 	private:
