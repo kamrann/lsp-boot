@@ -306,14 +306,20 @@ namespace lsp_boot::lsp
 			inlay_hint,
 			semantic_tokens_full,
 			semantic_tokens_range,
+
+			semantic_tokens_refresh,
 		};
 
+		// Client to Server
 		using Initialize = JsonMessage< Kinds::initialize, "initialize" >;
 		using Shutdown = JsonMessage< Kinds::shutdown, "shutdown" >;
 		using DocumentSymbols = JsonMessage< Kinds::document_symbols, "textDocument/documentSymbol" >;
 		using InlayHint = JsonMessage< Kinds::inlay_hint, "textDocument/inlayHint" >;
 		using SemanticTokensFull = JsonMessage< Kinds::semantic_tokens_full, "textDocument/semanticTokens/full" >;
 		using SemanticTokensRange = JsonMessage< Kinds::semantic_tokens_range, "textDocument/semanticTokens/range" >;
+
+		// Server to Client
+		using SemanticTokensRefresh = JsonMessage< Kinds::semantic_tokens_range, "workspace/semanticTokens/refresh" >;		
 	}
 
 	export namespace notifications
