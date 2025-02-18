@@ -9,6 +9,7 @@ import std;
 #include <string_view>
 #include <functional>
 #include <variant>
+#include <expected>
 #include <memory>
 #include <chrono>
 #include <atomic>
@@ -18,6 +19,7 @@ export module lsp_boot.server;
 
 import lsp_boot.lsp;
 import lsp_boot.work_queue;
+import lsp_boot.utility;
 
 import lsp_boot.ext_mod_wrap.boost.json;
 
@@ -60,8 +62,18 @@ namespace lsp_boot
 	export class Server
 	{
 	public:
-		using RequestResult = boost::json::value; // @todo: simplifying for now, unclear if reason to maintain static typing.
-		using NotificationResult = boost::json::value; // @todo: simplifying for now, unclear if reason to maintain static typing.
+		struct RequestSuccessResult
+		{
+			boost::json::value json;
+		};
+		struct NotificationSuccessResult
+		{
+		};
+		using ResponseError = boost::json::object;
+
+		using RequestResult = std::expected< RequestSuccessResult, ResponseError >;
+		using NotificationResult = std::expected< NotificationSuccessResult, ResponseError >;
+		
 		using ServerPump = std::function< void() >;
 
 		struct ServerImplementation
@@ -89,6 +101,35 @@ namespace lsp_boot
 		auto request_shutdown() -> void;
 
 	private:
+		static auto make_not_implemented_result()
+		{
+			return std::unexpected(ResponseError{
+				{ "code", -32803 }, // request failed. @todo: make error codes enum.
+				{ "message", "Not implemented" },
+			});
+		}
+
+		template < auto kind, FixedString name >
+		static auto make_default_result(lsp::JsonMessage< kind, name > const&)
+		{
+			if constexpr (std::same_as< decltype(kind), lsp::requests::Kinds >)
+			{
+				// Any requests that the implementation does not handle currently considered to be errors.
+				// Need to look deeper into what the expectations are though.
+				return make_not_implemented_result();
+			}
+			else
+			{
+				static_assert(std::same_as< decltype(kind), lsp::notifications::Kinds >);
+				return NotificationSuccessResult{};
+			}
+		}
+
+		static auto make_default_result(lsp::requests::Shutdown const&)
+		{
+			return RequestSuccessResult{ nullptr };
+		}
+
 		template < typename ImplementationInit >
 		auto wrap_implementation(ImplementationInit&& implementation_init) -> ServerImplementation
 		{
@@ -110,7 +151,7 @@ namespace lsp_boot
 						else
 						{
 							/* @todo: log unsupported/maybe check against our published capabilities. */
-							return Result{};
+							return make_default_result(msg);
 						}
 					}, std::move(msg));
 					};

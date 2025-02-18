@@ -262,6 +262,7 @@ namespace lsp_boot::lsp
 	public:
 		using RawMessage = json::object;
 
+		static constexpr auto kind = msg_id;
 		static constexpr auto raw_name = msg_name;
 		static constexpr auto name = std::string_view{ raw_name };
 

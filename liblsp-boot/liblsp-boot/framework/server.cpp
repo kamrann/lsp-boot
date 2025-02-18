@@ -36,7 +36,7 @@ namespace lsp_boot
 		// may want to consider at least making the response async so we can move the pump invocation off the server dispatching thread.
 		impl.pump();
 
-		auto result = [&]() -> std::optional< RequestResult > {
+		auto result = [&]() -> RequestResult {
 			// @todo: consider dispatching via type list
 			if (method == requests::Initialize::name)
 			{
@@ -68,21 +68,28 @@ namespace lsp_boot
 			}
 			else
 			{
-				return std::nullopt;
+				return make_not_implemented_result();
 			}
 			}();
 
 		// @todo: currently server implementation is able to send notifications itself, but responses are expected to be returned synchronously and handled here.
 		// feels inconsistent, and likely will want to allow an implementation to generate an async response - though could do that with similar approach using a future.
-		auto temp_todo_err = std::move(result).transform([&](RequestResult&& result) {
-			auto response = boost::json::object{
+		auto response = [&] {
+			auto json = boost::json::object{
 				{ "jsonrpc", "2.0" },
 				{ keys::id, std::move(request_id) },
-				{ keys::result, std::move(result) },
 			};
-			out_queue.push(std::move(response));
-			return true;
-			}).value_or(false);
+			if (result.has_value())
+			{
+				json["result"] = std::move(result->json);
+			}
+			else
+			{
+				json["error"] = std::move(result).error();
+			}
+			return json;
+			}();
+		out_queue.push(std::move(response));
 
 		return {};
 	}
