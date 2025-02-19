@@ -140,10 +140,14 @@ namespace lsp_boot
 				};
 			auto typed_impl = std::forward< ImplementationInit >(implementation_init)(send_notify);
 			auto impl_ptr = typed_impl.get();
+
+#if defined(_MSC_VER) && (_MSC_VER > 1943)
+#error "This compiler version is unsupported. Pending https://developercommunity.visualstudio.com/t/Trivial-template-argument-expressions-br/10852233"
+#endif
 			
 			auto make_message_handler = [&]< typename Result >(std::in_place_type_t< Result >) {
-				return [impl_ptr](auto&& msg) mutable {
-					return std::visit([&]< typename M >(M&& msg) -> Result {
+				return [impl_ptr]< typename GenericMsg >(GenericMsg&& msg) mutable {
+					return std::visit([&]< typename Msg >(Msg&& msg) -> Result {
 						if constexpr (requires { (*impl_ptr)(std::move(msg)); })
 						{
 							return (*impl_ptr)(std::move(msg));
