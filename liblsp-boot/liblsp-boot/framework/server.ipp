@@ -79,10 +79,10 @@ namespace lsp_boot
 		 * Server side logger.
 		 */
 		template < std::invocable< LogOutputIter > Callback >
-		auto log(Callback&& callback) const -> LogOutputIter
+		auto log(Callback&& callback) const -> void
 		{
 			static_assert(std::convertible_to< std::invoke_result_t< Callback, LogOutputIter >, LogOutputIter >);
-			return log_impl(std::forward< Callback >(callback));
+			log_impl(std::forward< Callback >(callback));
 		}
 
 		/**
@@ -98,8 +98,8 @@ namespace lsp_boot
 		}
 
 	private:
-		virtual void send_notification_impl(lsp::RawMessage&&) const = 0;
-		virtual void log_impl(LogOutputCallbackView) const = 0;
+		virtual auto send_notification_impl(lsp::RawMessage&&) const -> void = 0;
+		virtual auto log_impl(LogOutputCallbackView) const -> void = 0;
 	};
 
 	export class Server : private ServerImplAPI
@@ -250,8 +250,8 @@ namespace lsp_boot
 		auto postprocess_message(DispatchResult const&) const -> void;
 
 	private:
-		void send_notification_impl(lsp::RawMessage&&) const override;
-		void log_impl(LogOutputCallbackView) const override;
+		auto send_notification_impl(lsp::RawMessage&&) const -> void override;
+		auto log_impl(LogOutputCallbackView) const -> void override;
 
 	private:
 		PendingInputQueue& in_queue;
