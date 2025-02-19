@@ -118,6 +118,10 @@ namespace lsp_boot
 				.exit = true,
 			};
 		}
+		else if (method == notifications::DidChangeConfiguration::name)
+		{
+			handle_notification(notifications::DidChangeConfiguration(std::move(msg)));
+		}
 		else if (method == notifications::DidOpenTextDocument::name)
 		{
 			handle_notification(notifications::DidOpenTextDocument(std::move(msg)));

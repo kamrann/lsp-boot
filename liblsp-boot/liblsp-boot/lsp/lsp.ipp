@@ -333,6 +333,7 @@ namespace lsp_boot::lsp
 			did_open_text_document,
 			did_change_text_document,
 			did_close_text_document,
+			did_change_configuration,
 
 			// From server
 			publish_diagnostics,
@@ -344,6 +345,7 @@ namespace lsp_boot::lsp
 		using DidOpenTextDocument = JsonMessage< Kinds::did_open_text_document, "textDocument/didOpen" >;
 		using DidChangeTextDocument = JsonMessage< Kinds::did_change_text_document, "textDocument/didChange" >;
 		using DidCloseTextDocument = JsonMessage< Kinds::did_close_text_document, "textDocument/didClose" >;
+		using DidChangeConfiguration = JsonMessage< Kinds::did_change_configuration, "workspace/didChangeConfiguration" >;
 
 		// From server
 		using PublishDiagnostics = JsonMessage< Kinds::publish_diagnostics, "textDocument/publishDiagnostics" >;
@@ -363,6 +365,7 @@ namespace lsp_boot::lsp
 		notifications::Exit,
 		notifications::DidOpenTextDocument,
 		notifications::DidChangeTextDocument,
-		notifications::DidCloseTextDocument
+		notifications::DidCloseTextDocument,
+		notifications::DidChangeConfiguration
 	>;
 }
