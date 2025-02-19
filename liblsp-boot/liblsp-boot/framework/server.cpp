@@ -30,6 +30,9 @@ namespace lsp_boot
 		auto request_id = msg.at(keys::id);
 
 		log("Dispatching request: id={}, method={}", boost::json::serialize(request_id), method);
+		log([&](auto out) {
+			return std::ranges::copy(boost::json::serialize(msg), out).out;
+			});
 
 		// @todo: not sure how best to appoach this, but as we currently return the request result synchronously we need to ensure that
 		// any pending notifications or prior requests that could potentially affect our result have already been processed.
@@ -85,13 +88,17 @@ namespace lsp_boot
 			if (result.has_value())
 			{
 				static constexpr auto max_log_chars = 128;
-				log("Queueing response [success]: result={:s}...", boost::json::serialize(result->json) | std::views::take(max_log_chars));
+				log([&](auto out) {
+					return std::format_to(out, "Queueing response [success]: result={:s}...", boost::json::serialize(result->json) | std::views::take(max_log_chars));
+					});
 
 				json["result"] = std::move(result->json);
 			}
 			else
 			{
-				log("Queueing response [failure]: error={}", boost::json::serialize(result.error()));
+				log([&](auto out) {
+					return std::format_to(out, "Queueing response [failure]: error={}", boost::json::serialize(result.error()));
+					});
 
 				json["error"] = std::move(result).error();
 			}
@@ -106,6 +113,9 @@ namespace lsp_boot
 	auto Server::dispatch_notification(std::string_view const method, lsp::RawMessage&& msg) -> InternalMessageResult
 	{
 		log("Dispatching notification: method={}", method);
+		log([&](auto out) {
+			return std::ranges::copy(boost::json::serialize(msg), out).out;
+			});
 
 		if (method == notifications::Initialized::name)
 		{
@@ -230,12 +240,12 @@ namespace lsp_boot
 		}
 	}
 
-	void Server::send_notification_impl(lsp::RawMessage&& msg) const
+	auto Server::send_notification_impl(lsp::RawMessage&& msg) const -> void
 	{
 		out_queue.push(std::move(msg));
 	}
 
-	void Server::log_impl(LogOutputCallbackView callback) const
+	auto Server::log_impl(LogOutputCallbackView callback) const -> void
 	{
 		logger(std::move(callback));
 	}
