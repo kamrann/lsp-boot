@@ -10,8 +10,7 @@ import lsp_boot;
 export class ExampleImpl
 {
 public:
-	template < std::regular_invocable< lsp_boot::lsp::RawMessage&& > SendNotify >
-	ExampleImpl(SendNotify&& /*send_notify*/)
+	ExampleImpl(lsp_boot::ServerImplAPI& /* api */)
 	{
 	}
 
