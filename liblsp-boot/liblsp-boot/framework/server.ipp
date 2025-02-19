@@ -4,6 +4,7 @@ module;
 #if defined(LSP_BOOT_ENABLE_IMPORT_STD)
 import std;
 #else
+#include <type_traits>
 #include <utility>
 #include <string>
 #include <string_view>
@@ -59,7 +60,49 @@ namespace lsp_boot
 
 	using MetricsSink = std::function< void(MessageMetrics const&) >;
 
-	export class Server
+	using LogOutputIter = std::ostream_iterator< char >;
+	export using LogOutputCallbackView = std::function< LogOutputIter(LogOutputIter) >&&; // Ideally would be function_view
+	using LoggingSink = std::function< void(LogOutputCallbackView) >;
+
+	export class ServerImplAPI
+	{
+	public:
+		/**
+		 * Send an LSP notification to the client.
+		 */
+		auto send_notification(lsp::RawMessage&& msg) const -> void
+		{
+			send_notification_impl(std::move(msg));
+		}
+
+		/**
+		 * Server side logger.
+		 */
+		template < std::invocable< LogOutputIter > Callback >
+		auto log(Callback&& callback) const -> LogOutputIter
+		{
+			static_assert(std::convertible_to< std::invoke_result_t< Callback, LogOutputIter >, LogOutputIter >);
+			return log_impl(std::forward< Callback >(callback));
+		}
+
+		/**
+		 * Server side logger simplified interface taking pre-evaluated arguments.
+		 */
+		template < typename... Args >
+		auto log(std::basic_format_string< char, std::type_identity_t< Args >... > fmt_str, Args&&... args) const -> void
+		{
+			// @todo: currently this is assuming the logging sink is synchronous...
+			log_impl([&](LogOutputIter out) {
+				return std::format_to(out, fmt_str, std::forward< Args >(args)...);
+				});
+		}
+
+	private:
+		virtual void send_notification_impl(lsp::RawMessage&&) const = 0;
+		virtual void log_impl(LogOutputCallbackView) const = 0;
+	};
+
+	export class Server : private ServerImplAPI
 	{
 	public:
 		struct RequestSuccessResult
@@ -91,8 +134,9 @@ namespace lsp_boot
 			PendingInputQueue& pending_input_queue,
 			OutputQueue& output_queue,
 			ImplementationInit&& implementation_init,
+			LoggingSink logging_sink = {},
 			MetricsSink metrics_sink = {})
-			: in_queue{ pending_input_queue }, out_queue{ output_queue }, metrics{ std::move(metrics_sink) }
+			: in_queue{ pending_input_queue }, out_queue{ output_queue }, logger{ logging_sink }, metrics{ std::move(metrics_sink) }
 		{
 			impl = wrap_implementation(std::forward< ImplementationInit >(implementation_init));
 		}
@@ -133,15 +177,10 @@ namespace lsp_boot
 		template < typename ImplementationInit >
 		auto wrap_implementation(ImplementationInit&& implementation_init) -> ServerImplementation
 		{
-			// @todo: probably won't be sufficient, suspect we may need more complex interactions with the server implementation
-			// needing to send requests to the client too.
-			auto send_notify = [this](lsp::RawMessage&& msg) {
-				out_queue.push(std::move(msg));
-				};
-			auto typed_impl = std::forward< ImplementationInit >(implementation_init)(send_notify);
+			auto typed_impl = std::forward< ImplementationInit >(implementation_init)(static_cast< ServerImplAPI& >(*this));
 			auto impl_ptr = typed_impl.get();
 
-#if defined(_MSC_VER) && (_MSC_VER > 1943)
+#if defined(_MSC_VER) && !defined(__clang__) && (_MSC_VER > 1943)
 #error "This compiler version is unsupported. Pending https://developercommunity.visualstudio.com/t/Trivial-template-argument-expressions-br/10852233"
 #endif
 			
@@ -211,9 +250,14 @@ namespace lsp_boot
 		auto postprocess_message(DispatchResult const&) const -> void;
 
 	private:
+		void send_notification_impl(lsp::RawMessage&&) const override;
+		void log_impl(LogOutputCallbackView) const override;
+
+	private:
 		PendingInputQueue& in_queue;
 		OutputQueue& out_queue;
 		ServerImplementation impl;
+		LoggingSink logger;
 		MetricsSink metrics;
 		std::atomic< bool > shutdown;
 	};

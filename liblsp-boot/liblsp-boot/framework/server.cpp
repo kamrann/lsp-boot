@@ -29,6 +29,8 @@ namespace lsp_boot
 	{
 		auto request_id = msg.at(keys::id);
 
+		log("Dispatching request: id={}, method={}", boost::json::serialize(request_id), method);
+
 		// @todo: not sure how best to appoach this, but as we currently return the request result synchronously we need to ensure that
 		// any pending notifications or prior requests that could potentially affect our result have already been processed.
 		// this would be fairly complex to try to handle based on what notifications there were and in what order they came, so for now
@@ -79,14 +81,21 @@ namespace lsp_boot
 				{ "jsonrpc", "2.0" },
 				{ keys::id, std::move(request_id) },
 			};
+
 			if (result.has_value())
 			{
+				static constexpr auto max_log_chars = 128;
+				log("Queueing response [success]: result={:s}...", boost::json::serialize(result->json) | std::views::take(max_log_chars));
+
 				json["result"] = std::move(result->json);
 			}
 			else
 			{
+				log("Queueing response [failure]: error={}", boost::json::serialize(result.error()));
+
 				json["error"] = std::move(result).error();
 			}
+
 			return json;
 			}();
 		out_queue.push(std::move(response));
@@ -96,6 +105,8 @@ namespace lsp_boot
 
 	auto Server::dispatch_notification(std::string_view const method, lsp::RawMessage&& msg) -> InternalMessageResult
 	{
+		log("Dispatching notification: method={}", method);
+
 		if (method == notifications::Initialized::name)
 		{
 			// client initialization completed
@@ -213,5 +224,15 @@ namespace lsp_boot
 		{
 			metrics(result.metrics());
 		}
+	}
+
+	void Server::send_notification_impl(lsp::RawMessage&& msg) const
+	{
+		out_queue.push(std::move(msg));
+	}
+
+	void Server::log_impl(LogOutputCallbackView callback) const
+	{
+		logger(std::move(callback));
 	}
 }
