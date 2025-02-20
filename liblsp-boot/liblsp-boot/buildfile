@@ -14,6 +14,9 @@ cxx.poptions =+ "-I$out_root"
 if $config.liblsp_boot.enable_import_std
   cxx.poptions += -DLSP_BOOT_ENABLE_IMPORT_STD
 
+if ($cxx.target.system != 'win32-msvc')
+  cxx.libs += -pthread
+
 # Export options.
 #
 lib{lsp-boot}:
