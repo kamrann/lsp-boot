@@ -3,13 +3,14 @@ name: liblsp-boot
 version: 0.1.4-a.0.z
 language: c++
 project: lsp-boot
-summary: lsp-boot C++ library
-license: other: proprietary ; Not free/open source.
+summary: C++ library wrapping the Language Server Protocol
+license: BSL-1.0 ; Boost Software License 1.0.
+topics: C++, LSP
 description-file: README.md
-url: https://example.org/lsp-boot
+url: https://github.com/kamrann/lsp-boot
 email: cjangus@gmail.com
 
-depends: * build2 >= 0.16.0
-depends: * bpkg >= 0.16.0
+depends: * build2 >= 0.17.0
+depends: * bpkg >= 0.17.0
 
 depends: libboost-json >= 1.78
