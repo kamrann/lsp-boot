@@ -11,6 +11,7 @@ import std;
 #include <functional>
 #include <variant>
 #include <expected>
+#include <iterator>
 #include <memory>
 #include <chrono>
 #include <atomic>
