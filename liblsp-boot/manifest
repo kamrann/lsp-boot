@@ -15,3 +15,10 @@ depends: * build2 >= 0.17.0
 depends: * bpkg >= 0.17.0
 
 depends: libboost-json >= 1.78
+
+builds: clang-18+
+build-include: linux_debian_12-clang_18_libc++
+build-include: freebsd_14-clang_18
+build-exclude: ** ; Modules use currently precludes the majority of configurations
+
+default-build-config: config.bin.lib=static ; No shared library support
