@@ -1,0 +1,7 @@
+: 1
+name: liblsp-boot
+version: 0.1.4
+language: c++
+project: lsp-boot
+summary: C++ library wrapping the Language Server Protocol
+license: BSL-1.0; Boost Software License 1.0.
