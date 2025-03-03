@@ -14,7 +14,7 @@ build-email: cjangus@gmail.com
 depends: * build2 >= 0.17.0
 depends: * bpkg >= 0.17.0
 
-depends: libboost-json >= 1.78
+depends: libboost-json >= 1.78.0 ; ~1.85.0
 
 builds: clang-18+
 build-include: freebsd_14-clang_18
