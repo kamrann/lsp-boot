@@ -6,6 +6,11 @@ module;
 
 export module lsp_boot.ext_mod_wrap.boost.json;
 
+export namespace boost::system
+{
+    using boost::system::system_error;
+}
+
 namespace bj = boost::json;
 
 export namespace boost::json
@@ -16,7 +21,6 @@ export namespace boost::json
     using bj::object;
 
     using bj::string_view;
-    using bj::system_error;
 
     using bj::kind;
     using bj::visit;
