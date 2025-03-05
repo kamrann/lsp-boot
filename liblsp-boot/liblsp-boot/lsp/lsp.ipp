@@ -34,29 +34,35 @@ namespace lsp_boot::lsp
 		using namespace std::string_view_literals;
 
 		constexpr auto capabilities = "capabilities"sv;
-		constexpr auto params = "params"sv;
-		constexpr auto id = "id"sv;
-		constexpr auto result = "result"sv;
-		constexpr auto method = "method"sv;
-		constexpr auto text_document = "textDocument"sv;
-		constexpr auto uri = "uri"sv;
-		constexpr auto range = "range"sv;
-		constexpr auto selection_range = "selectionRange"sv;
-		constexpr auto position = "position"sv;
-		constexpr auto start = "start"sv;
-		constexpr auto end = "end"sv;
-		constexpr auto line = "line"sv;
 		constexpr auto character = "character"sv;
-		constexpr auto name = "name"sv;
-		constexpr auto kind = "kind"sv;
-		constexpr auto text = "text"sv;
+		constexpr auto code = "code"sv;
+		constexpr auto code_description = "codeDescription"sv;
 		constexpr auto content_changes = "contentChanges"sv;
-		constexpr auto message = "message"sv;
 		constexpr auto data = "data"sv;
-		constexpr auto label = "label"sv;
 		constexpr auto diagnostics = "diagnostics"sv;
-		constexpr auto token_types = "tokenTypes"sv;
+		constexpr auto end = "end"sv;
+		constexpr auto href = "href"sv;
+		constexpr auto id = "id"sv;
+		constexpr auto kind = "kind"sv;
+		constexpr auto label = "label"sv;
+		constexpr auto line = "line"sv;
+		constexpr auto message = "message"sv;
+		constexpr auto method = "method"sv;
+		constexpr auto name = "name"sv;
+		constexpr auto params = "params"sv;
+		constexpr auto position = "position"sv;
+		constexpr auto range = "range"sv;
+		constexpr auto result = "result"sv;
+		constexpr auto selection_range = "selectionRange"sv;
+		constexpr auto severity = "severity"sv;
+		constexpr auto source = "source"sv;
+		constexpr auto start = "start"sv;
+		constexpr auto tags = "tags"sv;
+		constexpr auto text = "text"sv;
+		constexpr auto text_document = "textDocument"sv;
 		constexpr auto token_modifiers = "tokenModifiers"sv;
+		constexpr auto token_types = "tokenTypes"sv;
+		constexpr auto uri = "uri"sv;
 	}
 
 	export using DocumentURI = std::string;
@@ -108,6 +114,14 @@ namespace lsp_boot::lsp
 				{ keys::end, json::value(end) },
 			};
 		}
+	};
+
+	export struct DiagnosticSeverity
+	{
+		static constexpr auto error = 1;
+		static constexpr auto warning = 2;
+		static constexpr auto information = 3;
+		static constexpr auto hint = 4;
 	};
 
 	export enum SymbolKind
