@@ -60,6 +60,10 @@ namespace lsp_boot
 			{
 				return handle_request(requests::InlayHint(std::move(msg)));
 			}
+			else if (method == requests::Hover::name)
+			{
+				return handle_request(requests::Hover(std::move(msg)));
+			}
 			else if (method == requests::SemanticTokensFull::name)
 			{
 				return handle_request(requests::SemanticTokensFull(std::move(msg)));

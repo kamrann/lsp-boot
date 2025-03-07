@@ -38,6 +38,7 @@ namespace lsp_boot::lsp
 		constexpr auto code = "code"sv;
 		constexpr auto code_description = "codeDescription"sv;
 		constexpr auto content_changes = "contentChanges"sv;
+		constexpr auto contents = "contents"sv;
 		constexpr auto data = "data"sv;
 		constexpr auto diagnostics = "diagnostics"sv;
 		constexpr auto end = "end"sv;
@@ -63,6 +64,7 @@ namespace lsp_boot::lsp
 		constexpr auto token_modifiers = "tokenModifiers"sv;
 		constexpr auto token_types = "tokenTypes"sv;
 		constexpr auto uri = "uri"sv;
+		constexpr auto value = "value"sv;
 	}
 
 	export using DocumentURI = std::string;
@@ -72,6 +74,8 @@ namespace lsp_boot::lsp
 	{
 		std::uint32_t line = 0;
 		std::uint32_t character = 0;
+
+		auto operator<=> (Location const& rhs) const = default;
 
 		static auto from_json(json::value const& js) -> Location
 		{
@@ -319,6 +323,7 @@ namespace lsp_boot::lsp
 			shutdown,
 			document_symbols,
 			inlay_hint,
+			hover,
 			semantic_tokens_full,
 			semantic_tokens_range,
 
@@ -330,6 +335,7 @@ namespace lsp_boot::lsp
 		using Shutdown = JsonMessage< Kinds::shutdown, "shutdown" >;
 		using DocumentSymbols = JsonMessage< Kinds::document_symbols, "textDocument/documentSymbol" >;
 		using InlayHint = JsonMessage< Kinds::inlay_hint, "textDocument/inlayHint" >;
+		using Hover = JsonMessage< Kinds::hover, "textDocument/hover" >;
 		using SemanticTokensFull = JsonMessage< Kinds::semantic_tokens_full, "textDocument/semanticTokens/full" >;
 		using SemanticTokensRange = JsonMessage< Kinds::semantic_tokens_range, "textDocument/semanticTokens/range" >;
 
@@ -370,6 +376,7 @@ namespace lsp_boot::lsp
 		requests::Shutdown,
 		requests::DocumentSymbols,
 		requests::InlayHint,
+		requests::Hover,
 		requests::SemanticTokensFull,
 		requests::SemanticTokensRange
 	>;
