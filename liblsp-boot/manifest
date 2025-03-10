@@ -9,7 +9,7 @@ topics: C++, LSP
 description-file: README.md
 url: https://github.com/kamrann/lsp-boot
 email: cjangus@gmail.com
-build-email: cjangus@gmail.com
+build-error-email: cjangus@gmail.com
 
 depends: * build2 >= 0.17.0
 depends: * bpkg >= 0.17.0
