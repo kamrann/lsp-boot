@@ -47,12 +47,14 @@ namespace lsp_boot::lsp
 		constexpr auto kind = "kind"sv;
 		constexpr auto label = "label"sv;
 		constexpr auto line = "line"sv;
+		constexpr auto location = "location"sv;
 		constexpr auto message = "message"sv;
 		constexpr auto method = "method"sv;
 		constexpr auto name = "name"sv;
 		constexpr auto params = "params"sv;
 		constexpr auto position = "position"sv;
 		constexpr auto range = "range"sv;
+		constexpr auto related_information = "relatedInformation"sv;
 		constexpr auto result = "result"sv;
 		constexpr auto selection_range = "selectionRange"sv;
 		constexpr auto severity = "severity"sv;
