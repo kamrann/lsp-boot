@@ -1,6 +1,6 @@
 : 1
 name: liblsp-boot
-version: 0.1.5
+version: 0.1.6-a.0.z
 language: c++
 project: lsp-boot
 summary: C++ library wrapping the Language Server Protocol
