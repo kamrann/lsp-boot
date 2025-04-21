@@ -181,9 +181,9 @@ namespace lsp_boot
 			auto typed_impl = std::forward< ImplementationInit >(implementation_init)(static_cast< ServerImplAPI& >(*this));
 			auto impl_ptr = typed_impl.get();
 
-#if defined(_MSC_VER) && !defined(__clang__) && (_MSC_VER > 1943)
-#error "This compiler version is unsupported. Pending https://developercommunity.visualstudio.com/t/Trivial-template-argument-expressions-br/10852233"
-#endif
+//#if defined(_MSC_VER) && !defined(__clang__) && (_MSC_VER > 1943)
+//#error "This compiler version is unsupported. Pending https://developercommunity.visualstudio.com/t/Trivial-template-argument-expressions-br/10852233"
+//#endif
 			
 			auto make_message_handler = [&]< typename Result >(std::in_place_type_t< Result >) {
 				return [impl_ptr]< typename GenericMsg >(GenericMsg&& msg) mutable {
