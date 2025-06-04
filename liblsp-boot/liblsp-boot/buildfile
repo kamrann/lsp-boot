@@ -11,12 +11,6 @@ hxx{version}: in{version} $src_root/manifest
 #
 cxx.poptions =+ "-I$out_root"
 
-if $config.liblsp_boot.enable_import_std
-  cxx.poptions += -DLSP_BOOT_ENABLE_IMPORT_STD
-
-if ($cxx.target.system != 'win32-msvc')
-  cxx.libs += -pthread
-
 # Export options.
 #
 lib{lsp-boot}:
@@ -24,6 +18,17 @@ lib{lsp-boot}:
   cxx.export.poptions = "-I$out_root"
   cxx.export.libs = $intf_libs
 }
+
+if $config.liblsp_boot.enable_import_std
+  cxx.poptions += -DLSP_BOOT_ENABLE_IMPORT_STD
+if $config.liblsp_boot.disable_threads
+{
+  cxx.poptions += -DLSP_BOOT_DISABLE_THREADS
+  lib{lsp-boot}: cxx.export.poptions += -DLSP_BOOT_DISABLE_THREADS
+}
+
+if ($cxx.target.system != 'win32-msvc')
+  cxx.libs += -pthread
 
 # For pre-releases use the complete version to make sure they cannot
 # be used in place of another pre-release or the final version. See

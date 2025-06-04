@@ -1,4 +1,7 @@
 
+// @todo: should probably enable/disable in the buildfile using metadata
+#if not defined(LSP_BOOT_DISABLE_THREADS)
+
 #include <liblsp-boot/version.hpp>
 
 #include <string_view>
@@ -48,8 +51,11 @@ auto format_notification(std::string_view const method, std::optional< boost::js
 		});
 }
 
+#endif
+
 int main ()
 {
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 	std::stringstream in, out;
 
 	in << format_request("initialize", boost::json::object{
@@ -101,6 +107,7 @@ int main ()
 
 	// Server should have exited
 	assert(server_fut.wait_for(0ms) == std::future_status::ready);
+#endif
 
 	return 0;
 }

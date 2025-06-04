@@ -10,10 +10,11 @@ import std;
 #include <ostream>
 #include <istream>
 #include <memory>
-#include <thread>
 #include <chrono>
 #include <format>
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 #include <thread>
+#endif
 #endif
 
 module lsp_boot.transport;
@@ -134,13 +135,14 @@ namespace lsp_boot
 				err << "Failure parsing received JSON" << std::endl;
 				return std::nullopt;
 			}
-				return ReceivedMessage{
-					.msg{ value.as_object() },
-					.received_time = timestamp,
-				};
+			return ReceivedMessage{
+				.msg{ value.as_object() },
+				.received_time = timestamp,
+			};
 			});
 	}
 
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 	auto StreamConnection::process_output() -> void
 	{
 		while (!shutdown)
@@ -177,5 +179,40 @@ namespace lsp_boot
 		shutdown = true;
 		out_queue.notify();
 		return in.good() || in.eof() ? 0 : -1;
+	}
+#endif
+
+	auto StreamConnection::update() -> bool
+	{
+		// Dispatch anything waiting in the output queue
+		while (true)
+		{
+			if (auto msg = out_queue.try_pop(); msg.has_value())
+			{
+				send_message(std::move(*msg));
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		// Read any input
+		if (not in.good())
+		{
+			return false;
+		}
+
+		if (auto msg = read_message(); msg.has_value())
+		{
+			in_queue.push(std::move(*msg));
+		}
+		else
+		{
+			err << std::format("{}. Exiting...",
+				in.eof() ? "StreamConnection reached end of input"sv : "StreamConnection message read error"sv) << std::endl;
+			return false;
+		}
+		return true;
 	}
 }

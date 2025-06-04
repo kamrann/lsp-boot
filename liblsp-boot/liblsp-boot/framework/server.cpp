@@ -228,6 +228,7 @@ namespace lsp_boot
 			});
 	}
 
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 	auto Server::run() -> void
 	{
 		while (!shutdown)
@@ -256,6 +257,30 @@ namespace lsp_boot
 	{
 		shutdown = true;
 		in_queue.notify();
+	}
+#endif
+
+	auto Server::update() -> bool
+	{
+		if (auto msg = in_queue.try_pop(); msg.has_value())
+		{
+			if (auto result = dispatch_message(std::move(*msg)); result.has_value())
+			{
+				postprocess_message(*result);
+
+				if (result->result.exit)
+				{
+					return false;
+				}
+			}
+			else
+			{
+				// Failure
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	auto Server::postprocess_message(DispatchResult const& result) const -> void

@@ -6,14 +6,17 @@ import std;
 #else
 #include <queue>
 #include <optional>
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 #include <mutex>
 #include <condition_variable>
+#endif
 #endif
 
 export module lsp_boot.synced_queue;
 
 namespace lsp_boot
 {
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 	export template < typename T >
 	class SyncedQueue
 	{
@@ -78,4 +81,32 @@ namespace lsp_boot
 		mutable std::mutex mtx;
 		std::condition_variable cvar;
 	};
+#else
+	export template < typename T >
+	class SyncedQueue
+	{
+	public:
+		auto push(T&& value) -> void
+		{
+			queue.push(std::move(value));
+		}
+
+		auto try_pop() -> std::optional< T >
+		{
+			if (!queue.empty())
+			{
+				auto value = std::move(queue.front());
+				queue.pop();
+				return value;
+			}
+			return std::nullopt;
+		}
+
+		auto notify() -> void
+		{}
+
+	private:
+		std::queue< T > queue;
+	};
+#endif
 }

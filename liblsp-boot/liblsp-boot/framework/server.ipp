@@ -14,7 +14,9 @@ import std;
 #include <iterator>
 #include <memory>
 #include <chrono>
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 #include <atomic>
+#endif
 #endif
 
 export module lsp_boot.server;
@@ -142,8 +144,13 @@ namespace lsp_boot
 			impl = wrap_implementation(std::forward< ImplementationInit >(implementation_init));
 		}
 
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 		auto run() -> void;
 		auto request_shutdown() -> void;
+#endif
+
+		// single-threaded api. returns false to signal shutdown.
+		auto update() -> bool;
 
 	private:
 		static auto make_not_implemented_result()
@@ -260,6 +267,8 @@ namespace lsp_boot
 		ServerImplementation impl;
 		LoggingSink logger;
 		MetricsSink metrics;
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 		std::atomic< bool > shutdown;
+#endif
 	};
 }

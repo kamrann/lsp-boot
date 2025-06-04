@@ -9,7 +9,9 @@ import std;
 #include <utility>
 #include <array>
 #include <string_view>
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 #include <thread>
+#endif
 #endif
 
 #include <version>
@@ -89,6 +91,7 @@ namespace lsp_boot
     };
 
 
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 #if defined(__cpp_lib_jthread)
     export using Thread = std::jthread;
 #else
@@ -105,5 +108,6 @@ namespace lsp_boot
             t.join();
         }
     };
+#endif
 #endif
 }

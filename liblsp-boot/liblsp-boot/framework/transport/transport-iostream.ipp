@@ -7,7 +7,9 @@ import std;
 #include <optional>
 #include <ostream>
 #include <istream>
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 #include <atomic>
+#endif
 #endif
 
 export module lsp_boot.transport:iostream;
@@ -32,14 +34,20 @@ namespace lsp_boot
 		{
 		}
 
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 		auto listen() -> int;
+#endif
+	// single-threaded
+	auto update() -> bool;
 
 	private:
 		auto read_message_header() -> std::optional< MessageHeader >;
 		auto read_message() -> std::optional< ReceivedMessage >;
 		auto send_message(MessageContent&& message) -> void;
 
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 		auto process_output() -> void;
+#endif
 
 	private:
 		PendingInputQueue& in_queue;
@@ -47,6 +55,8 @@ namespace lsp_boot
 		std::istream& in;
 		std::ostream& out;
 		std::ostream& err;
+#if not defined(LSP_BOOT_DISABLE_THREADS)
 		std::atomic< bool > shutdown = false;
+#endif
 	};
 }

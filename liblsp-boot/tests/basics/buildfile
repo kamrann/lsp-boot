@@ -1,3 +1,6 @@
 import libs = liblsp-boot%lib{lsp-boot}
 
-exe{driver}: {mxx cxx}{**} $libs testscript{**}
+exe{driver-threaded}: {cxx}{driver_threaded} {mxx}{**} $libs testscript{**}
+exe{driver-no-threads}: {cxx}{driver_no_threads} {mxx}{**} $libs testscript{**}
+
+./: exe{driver-threaded} exe{driver-no-threads}
