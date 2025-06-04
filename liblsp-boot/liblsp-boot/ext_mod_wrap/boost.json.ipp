@@ -3,12 +3,14 @@
 module;
 
 #include <boost/json.hpp>
+#include <boost/json/error.hpp>
 
 export module lsp_boot.ext_mod_wrap.boost.json;
 
 export namespace boost::system
 {
     using boost::system::system_error;
+    using boost::system::error_code;
 }
 
 namespace bj = boost::json;
