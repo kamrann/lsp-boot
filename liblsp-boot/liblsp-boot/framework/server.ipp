@@ -234,9 +234,9 @@ namespace lsp_boot
 			}
 		};
 
-		auto dispatch_request(std::string_view method, lsp::RawMessage&& msg) -> InternalMessageResult;
+		auto dispatch_request(std::string_view method, lsp::RawMessage&& msg) -> std::optional< InternalMessageResult >;
 		auto dispatch_notification(std::string_view method, lsp::RawMessage&& msg) -> InternalMessageResult;
-		auto dispatch_message(ReceivedMessage&& msg) -> DispatchResult;
+		auto dispatch_message(ReceivedMessage&& msg) -> std::optional< DispatchResult >;
 
 		auto handle_request(lsp::Request request) -> RequestResult
 		{

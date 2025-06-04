@@ -127,19 +127,17 @@ namespace lsp_boot
 			auto content = std::make_unique< char[] >(hdr.content_length);
 			in.read(content.get(), hdr.content_length);
 			auto timestamp = std::chrono::system_clock::now();
-			try
-			{
-				auto value = boost::json::parse(std::string_view{ content.get(), hdr.content_length });
-				return ReceivedMessage{
-					.msg{ value.as_object() },
-					.received_time = timestamp,
-				};
-			}
-			catch (...)
+			boost::system::error_code ec;
+			auto value = boost::json::parse(std::string_view{ content.get(), hdr.content_length }, ec);
+			if (ec)
 			{
 				err << "Failure parsing received JSON" << std::endl;
 				return std::nullopt;
 			}
+				return ReceivedMessage{
+					.msg{ value.as_object() },
+					.received_time = timestamp,
+				};
 			});
 	}
 

@@ -20,17 +20,22 @@ import std;
 
 module lsp_boot.server;
 
+using namespace std::string_literals;
 using namespace std::string_view_literals;
 
 namespace lsp_boot
 {
 	using namespace lsp;
 
-	auto Server::dispatch_request(std::string_view const method, lsp::RawMessage&& msg) -> InternalMessageResult
+	auto Server::dispatch_request(std::string_view const method, lsp::RawMessage&& msg) -> std::optional< InternalMessageResult >
 	{
-		auto request_id = msg.at(keys::id);
+		auto const request_id = msg.if_contains(keys::id);
+		if (!request_id)
+		{
+			return std::nullopt;
+		}
 
-		log("Dispatching request: id={}, method={}", boost::json::serialize(request_id), method);
+		log("Dispatching request: id={}, method={}", boost::json::serialize(*request_id), method);
 		log([&](auto out) {
 			return std::ranges::copy(boost::json::serialize(msg), out).out;
 			});
@@ -87,7 +92,7 @@ namespace lsp_boot
 		auto response = [&] {
 			auto json = boost::json::object{
 				{ "jsonrpc", "2.0" },
-				{ keys::id, std::move(request_id) },
+				{ keys::id, std::move(*request_id) },
 			};
 
 			if (result.has_value())
@@ -153,7 +158,7 @@ namespace lsp_boot
 		return {};
 	}
 
-	auto Server::dispatch_message(ReceivedMessage&& msg) -> DispatchResult
+	auto Server::dispatch_message(ReceivedMessage&& msg) -> std::optional< DispatchResult >
 	{
 		auto const dispatch_start_timestamp = std::chrono::system_clock::now();
 
@@ -164,40 +169,55 @@ namespace lsp_boot
 		auto const extract_document_id = [&]() -> std::string_view {
 			// @todo: intention is to include the readable name of the document. to do so will need to move top level control of the active documents
 			// from the implementation into the base server. which probably does make sense to do.
-			try
+			if (auto const params = message_params(json_msg); params != nullptr)
 			{
-				return message_params(json_msg)
-					.at(keys::text_document).as_object()
-					.at(keys::uri).as_string();
-			}
-			catch (...)
+				if (auto const params_obj = params->if_object(); params_obj != nullptr)
 			{
-				return "?"sv;
+					if (auto const doc = params_obj->if_contains(keys::text_document); doc != nullptr)
+					{
+						if (auto const doc_obj = doc->if_object(); doc_obj != nullptr)
+						{
+							if (auto const uri = doc_obj->if_contains(keys::uri); uri != nullptr)
+							{
+								if (auto const uri_str = uri->if_string(); uri_str != nullptr)
+								{
+									return *uri_str;
 			}
+							}
+						}
+					}
+				}
+			}
+
+			return "?"sv;
 			};
 
-		auto identifier = std::format("{}:{} [{}]",
-			id_it != json_msg.end() ? std::to_string(value_to< std::uint64_t >(id_it->value())) : "?",
-			method_it != json_msg.end() ? std::string_view{ method_it->value().as_string() } : "?"sv,
-			extract_document_id());
+		auto const id_str = id_it != json_msg.end() ? std::invoke([&]() -> std::optional< std::string > { auto res = try_value_to< std::uint64_t >(id_it->value()); return res.has_value() ? std::optional(std::to_string(*res)) : std::nullopt; }) : "?"s;
+		auto const method_str = method_it != json_msg.end() ? std::invoke([&]() -> std::optional< std::string_view > { return method_it->value().is_string() ? std::optional(std::string_view(method_it->value().get_string())) : std::nullopt; }) : "?"sv;
+		if (!id_str || !method_str)
+		{
+			return std::nullopt;
+		}
 
-		auto const result = [&] {
+		auto const identifier = std::format("{}:{} [{}]", *id_str, *method_str, extract_document_id());
+		auto result = std::invoke([&]() -> std::optional< InternalMessageResult > {
 			if (id_it != json_msg.end())
 			{
 				if (method_it != json_msg.end())
 				{
-					return dispatch_request(method_it->value().as_string(), std::move(json_msg));
+					return dispatch_request(*method_str, std::move(json_msg));
 				}
 			}
 			else if (method_it != json_msg.end())
 			{
-				return dispatch_notification(method_it->value().as_string(), std::move(json_msg));
+				return dispatch_notification(*method_str, std::move(json_msg));
 			}
 			return InternalMessageResult{};
-			}();
+			});
 
 		auto const dispatch_completion_timestamp = std::chrono::system_clock::now();
 
+		return std::move(result).transform([&](auto&& result) -> DispatchResult {
 		return {
 			.identifier = identifier,
 			.received = msg.received_time,
@@ -205,6 +225,7 @@ namespace lsp_boot
 			.dispatch_end = dispatch_completion_timestamp,
 			.result = std::move(result)
 		};
+			});
 	}
 
 	auto Server::run() -> void
@@ -213,18 +234,18 @@ namespace lsp_boot
 		{
 			if (auto msg = in_queue.pop_with_abort([this] { return shutdown.load(); }); msg.has_value())
 			{
-				try
+				if (auto result = dispatch_message(std::move(*msg)); result.has_value())
 				{
-					auto const result = dispatch_message(std::move(*msg));
-					postprocess_message(result);
+					postprocess_message(*result);
 
-					if (result.result.exit)
+					if (result->result.exit)
 					{
 						break;
 					}
 				}
-				catch (...)
+				else
 				{
+					// Failure
 					break;
 				}
 			}

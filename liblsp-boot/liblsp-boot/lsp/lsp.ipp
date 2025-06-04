@@ -90,6 +90,30 @@ namespace lsp_boot::lsp
 			};
 		}
 
+		static auto try_from_json(json::value const& js) -> std::optional< Location >
+		{
+			if (auto const obj = js.if_object(); obj != nullptr)
+			{
+				if (auto const line_attr = obj->if_contains(keys::line); line_attr != nullptr)
+				{
+					if (auto const line = json::try_value_to< std::uint32_t >(*line_attr))
+					{
+						if (auto const character_attr = obj->if_contains(keys::character); character_attr != nullptr)
+						{
+							if (auto const character = json::try_value_to< std::uint32_t >(*character_attr))
+							{
+								return Location{
+									.line = *line,
+									.character = *character,
+								};
+							}
+						}
+					}
+				}
+			}
+			return std::nullopt;
+		}
+
 		explicit operator json::value() const
 		{
 			return {
@@ -111,6 +135,28 @@ namespace lsp_boot::lsp
 				Location::from_json(obj.at(keys::start)),
 				Location::from_json(obj.at(keys::end)),
 			};
+		}
+
+		static auto try_from_json(json::value const& js) -> std::optional< Range >
+		{
+			if (auto const obj = js.if_object(); obj != nullptr)
+			{
+				if (auto const start_attr = obj->if_contains(keys::start); start_attr != nullptr)
+				{
+					if (auto const end_attr = obj->if_contains(keys::end); end_attr != nullptr)
+					{
+						if (auto start_loc = Location::try_from_json(*start_attr); start_loc.has_value())
+						{
+							if (auto end_loc = Location::try_from_json(*end_attr); end_loc.has_value())
+							{
+								return Range{ *start_loc, *end_loc };
+							}
+						}
+					}
+				}
+			}
+
+			return std::nullopt;
 		}
 
 		explicit operator json::value() const
@@ -268,9 +314,9 @@ namespace lsp_boot::lsp
 
 	export using RawMessage = json::object;
 
-	export auto message_params(RawMessage const& msg) -> auto const&
+	export auto message_params(RawMessage const& msg) -> boost::json::value const*
 	{
-		return msg.at(keys::params);
+		return msg.if_contains(keys::params);
 	}
 
 	// @note: short term approach is to just use the boost.json types directly, but adding wrapper to allow for static type differentiation.
@@ -307,7 +353,7 @@ namespace lsp_boot::lsp
 			return &js;
 		}
 
-		auto params() const -> auto const&
+		auto params() const -> boost::json::value const*
 		{
 			return message_params(js);
 		}
@@ -342,7 +388,7 @@ namespace lsp_boot::lsp
 		using SemanticTokensRange = JsonMessage< Kinds::semantic_tokens_range, "textDocument/semanticTokens/range" >;
 
 		// Server to Client
-		using SemanticTokensRefresh = JsonMessage< Kinds::semantic_tokens_range, "workspace/semanticTokens/refresh" >;		
+		using SemanticTokensRefresh = JsonMessage< Kinds::semantic_tokens_range, "workspace/semanticTokens/refresh" >;
 	}
 
 	export namespace notifications
