@@ -298,6 +298,9 @@ namespace lsp_boot
 
 	auto Server::log_impl(LogOutputCallbackView callback) const -> void
 	{
-		logger(std::move(callback));
+		if (logger)
+		{
+			logger(std::move(callback));
+		}
 	}
 }
