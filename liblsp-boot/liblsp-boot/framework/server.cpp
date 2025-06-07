@@ -172,7 +172,7 @@ namespace lsp_boot
 			if (auto const params = message_params(json_msg); params != nullptr)
 			{
 				if (auto const params_obj = params->if_object(); params_obj != nullptr)
-			{
+				{
 					if (auto const doc = params_obj->if_contains(keys::text_document); doc != nullptr)
 					{
 						if (auto const doc_obj = doc->if_object(); doc_obj != nullptr)
@@ -182,7 +182,7 @@ namespace lsp_boot
 								if (auto const uri_str = uri->if_string(); uri_str != nullptr)
 								{
 									return *uri_str;
-			}
+								}
 							}
 						}
 					}
@@ -218,13 +218,13 @@ namespace lsp_boot
 		auto const dispatch_completion_timestamp = std::chrono::system_clock::now();
 
 		return std::move(result).transform([&](auto&& result) -> DispatchResult {
-		return {
-			.identifier = identifier,
-			.received = msg.received_time,
-			.dispatch_start = dispatch_start_timestamp,
-			.dispatch_end = dispatch_completion_timestamp,
-			.result = std::move(result)
-		};
+			return {
+				.identifier = identifier,
+				.received = msg.received_time,
+				.dispatch_start = dispatch_start_timestamp,
+				.dispatch_end = dispatch_completion_timestamp,
+				.result = std::move(result)
+			};
 			});
 	}
 
