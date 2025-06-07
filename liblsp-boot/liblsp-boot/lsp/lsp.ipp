@@ -56,6 +56,7 @@ namespace lsp_boot::lsp
 		constexpr auto range = "range"sv;
 		constexpr auto related_information = "relatedInformation"sv;
 		constexpr auto result = "result"sv;
+		constexpr auto root_path = "rootPath"sv;
 		constexpr auto selection_range = "selectionRange"sv;
 		constexpr auto severity = "severity"sv;
 		constexpr auto source = "source"sv;
@@ -67,6 +68,7 @@ namespace lsp_boot::lsp
 		constexpr auto token_types = "tokenTypes"sv;
 		constexpr auto uri = "uri"sv;
 		constexpr auto value = "value"sv;
+		constexpr auto workspace_folders = "workspaceFolders"sv;
 	}
 
 	export using DocumentURI = std::string;
