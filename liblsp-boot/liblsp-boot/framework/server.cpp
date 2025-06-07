@@ -117,7 +117,7 @@ namespace lsp_boot
 			}();
 		out_queue.push(std::move(response));
 
-		return {};
+		return InternalMessageResult{};
 	}
 
 	auto Server::dispatch_notification(std::string_view const method, lsp::RawMessage&& msg) -> InternalMessageResult
