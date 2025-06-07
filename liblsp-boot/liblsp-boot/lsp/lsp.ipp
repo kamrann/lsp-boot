@@ -57,6 +57,7 @@ namespace lsp_boot::lsp
 		constexpr auto related_information = "relatedInformation"sv;
 		constexpr auto result = "result"sv;
 		constexpr auto root_path = "rootPath"sv;
+		constexpr auto root_uri = "rootUri"sv;
 		constexpr auto selection_range = "selectionRange"sv;
 		constexpr auto severity = "severity"sv;
 		constexpr auto source = "source"sv;
