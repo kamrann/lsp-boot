@@ -241,12 +241,14 @@ namespace lsp_boot
 
 					if (result->result.exit)
 					{
+						log("Server exiting as requested.");
 						break;
 					}
 				}
 				else
 				{
 					// Failure
+					log("Server exiting unexpectedly, message dispatch failure.");
 					break;
 				}
 			}
@@ -270,12 +272,14 @@ namespace lsp_boot
 
 				if (result->result.exit)
 				{
+					log("Server exiting as requested.");
 					return false;
 				}
 			}
 			else
 			{
 				// Failure
+				log("Server exiting unexpectedly, message dispatch failure.");
 				return false;
 			}
 		}
