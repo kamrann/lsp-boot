@@ -29,13 +29,14 @@ namespace lsp_boot
 
 	auto Server::dispatch_request(std::string_view const method, lsp::RawMessage&& msg) -> std::optional< InternalMessageResult >
 	{
-		auto const request_id = msg.if_contains(keys::id);
-		if (!request_id)
+		if (not msg.contains(keys::id))
 		{
 			return std::nullopt;
 		}
 
-		log("Dispatching request: id={}, method={}", boost::json::serialize(*request_id), method);
+		auto const request_id = msg.find(keys::id)->value();
+
+		log("Dispatching request: id={}, method={}", boost::json::serialize(request_id), method);
 		log([&](auto out) {
 			return std::ranges::copy(boost::json::serialize(msg), out).out;
 			});
@@ -92,7 +93,7 @@ namespace lsp_boot
 		auto response = [&] {
 			auto json = boost::json::object{
 				{ "jsonrpc", "2.0" },
-				{ keys::id, std::move(*request_id) },
+				{ keys::id, std::move(request_id) },
 			};
 
 			if (result.has_value())
