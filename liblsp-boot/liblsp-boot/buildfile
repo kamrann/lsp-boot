@@ -26,9 +26,10 @@ if $config.liblsp_boot.disable_threads
   cxx.poptions += -DLSP_BOOT_DISABLE_THREADS
   lib{lsp-boot}: cxx.export.poptions += -DLSP_BOOT_DISABLE_THREADS
 }
-
-if ($cxx.target.system != 'win32-msvc')
+elif ($cxx.target.system != 'win32-msvc')
+{
   cxx.libs += -pthread
+}
 
 # For pre-releases use the complete version to make sure they cannot
 # be used in place of another pre-release or the final version. See
