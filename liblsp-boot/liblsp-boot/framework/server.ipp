@@ -149,8 +149,15 @@ namespace lsp_boot
 		auto request_shutdown() -> void;
 #endif
 
+		enum class UpdateResult
+		{
+			processed,
+			idle,
+			shutdown,
+		};
+
 		// single-threaded api. returns false to signal shutdown.
-		auto update() -> bool;
+		auto update() -> UpdateResult;
 
 	private:
 		static auto make_not_implemented_result()

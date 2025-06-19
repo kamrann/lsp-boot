@@ -263,7 +263,7 @@ namespace lsp_boot
 	}
 #endif
 
-	auto Server::update() -> bool
+	auto Server::update() -> UpdateResult
 	{
 		if (auto msg = in_queue.try_pop(); msg.has_value())
 		{
@@ -274,18 +274,20 @@ namespace lsp_boot
 				if (result->result.exit)
 				{
 					log("Server exiting as requested.");
-					return false;
+					return UpdateResult::shutdown;
 				}
 			}
 			else
 			{
 				// Failure
 				log("Server exiting unexpectedly, message dispatch failure.");
-				return false;
+				return UpdateResult::shutdown;
 			}
+
+			return UpdateResult::processed;
 		}
 
-		return true;
+		return UpdateResult::idle;
 	}
 
 	auto Server::postprocess_message(DispatchResult const& result) const -> void
