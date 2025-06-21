@@ -11,6 +11,7 @@ import std;
 #include <functional>
 #include <variant>
 #include <expected>
+#include <queue>
 #include <iterator>
 #include <memory>
 #include <chrono>
@@ -54,6 +55,8 @@ namespace lsp_boot
 	//	NotificationHandler< notifications::DidCloseTextDocument >
 	//>;
 
+	export using ServerInternalTask = std::function< void() >;
+
 	export struct MessageMetrics
 	{
 		std::string identifier;
@@ -76,6 +79,14 @@ namespace lsp_boot
 		auto send_notification(lsp::RawMessage&& msg) const -> void
 		{
 			send_notification_impl(std::move(msg));
+		}
+
+		/**
+		 * Queues a task to be run before any new incoming message is processed, but after dispatching outgoing messages.
+		 */
+		auto queue_internal_task(ServerInternalTask&& task) -> void
+		{
+			queue_internal_task_impl(std::move(task));
 		}
 
 		/**
@@ -102,6 +113,7 @@ namespace lsp_boot
 
 	private:
 		virtual auto send_notification_impl(lsp::RawMessage&&) const -> void = 0;
+		virtual auto queue_internal_task_impl(ServerInternalTask&&) -> void = 0;
 		virtual auto log_impl(LogOutputCallbackView) const -> void = 0;
 	};
 
@@ -266,6 +278,7 @@ namespace lsp_boot
 
 	private:
 		auto send_notification_impl(lsp::RawMessage&&) const -> void override;
+		auto queue_internal_task_impl(ServerInternalTask&&) -> void override;
 		auto log_impl(LogOutputCallbackView) const -> void override;
 
 	private:
@@ -274,6 +287,7 @@ namespace lsp_boot
 		ServerImplementation impl;
 		LoggingSink logger;
 		MetricsSink metrics;
+		std::queue< ServerInternalTask > internal_task_queue;
 #if not defined(LSP_BOOT_DISABLE_THREADS)
 		std::atomic< bool > shutdown;
 #endif

@@ -265,6 +265,16 @@ namespace lsp_boot
 
 	auto Server::update() -> UpdateResult
 	{
+		// Process any pending internal tasks to completion before attempting to grab new input messages.
+		// @NOTE: This may be unnecessary, but it seems safest in case task completion is required in order for the server to reach a state
+		// that might be expected to correctly handle incoming messages which follow on from an earlier one.
+		while (!internal_task_queue.empty())
+		{
+			auto& task = internal_task_queue.front();
+			task();
+			internal_task_queue.pop();
+		}
+
 		if (auto msg = in_queue.try_pop(); msg.has_value())
 		{
 			if (auto result = dispatch_message(std::move(*msg)); result.has_value())
@@ -301,6 +311,11 @@ namespace lsp_boot
 	auto Server::send_notification_impl(lsp::RawMessage&& msg) const -> void
 	{
 		out_queue.push(std::move(msg));
+	}
+
+	auto Server::queue_internal_task_impl(ServerInternalTask&& task) -> void
+	{
+		internal_task_queue.push(std::move(task));
 	}
 
 	auto Server::log_impl(LogOutputCallbackView callback) const -> void
