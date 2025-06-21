@@ -182,9 +182,8 @@ namespace lsp_boot
 	}
 #endif
 
-	auto StreamConnection::update() -> bool
+	auto StreamConnection::update_outgoing() -> void
 	{
-		// Dispatch anything waiting in the output queue
 		while (true)
 		{
 			if (auto msg = out_queue.try_pop(); msg.has_value())
@@ -196,6 +195,12 @@ namespace lsp_boot
 				break;
 			}
 		}
+	}
+
+	auto StreamConnection::update() -> bool
+	{
+		// Dispatch anything waiting in the output queue
+		update_outgoing();
 
 		// Read any input
 		if (not in.good())

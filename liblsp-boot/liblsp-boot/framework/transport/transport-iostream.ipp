@@ -38,7 +38,8 @@ namespace lsp_boot
 		auto listen() -> int;
 #endif
 	// single-threaded
-	auto update() -> bool;
+	auto update_outgoing() -> void; // doesn't block
+	auto update() -> bool; // will block to read next incoming message
 
 	private:
 		auto read_message_header() -> std::optional< MessageHeader >;
