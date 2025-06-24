@@ -66,8 +66,34 @@ namespace lsp_boot
 
 	using MetricsSink = std::function< void(MessageMetrics const&) >;
 
-	using LogOutputIter = std::ostream_iterator< char >;
-	export using LogOutputCallbackView = std::function< LogOutputIter(LogOutputIter) >&&; // Ideally would be function_view
+	using LogOutputIter = std::ostreambuf_iterator< char >;
+	struct LogOutputContext
+	{
+		LogOutputContext(std::ostream& s) : stream{ s }
+		{
+		}
+
+		auto iter() const
+		{
+			return LogOutputIter{ stream };
+		}
+
+		auto write(std::ranges::contiguous_range auto&& rg) const
+		{
+			auto span = std::span{ std::forward< decltype(rg) >(rg) };
+			stream.write(span.data(), span.size());
+			return *this;
+		}
+
+		auto write(std::ranges::range auto&& rg) const
+		{
+			std::ranges::copy(std::forward< decltype(rg) >(rg), iter());
+			return *this;
+		}
+
+		std::ostream& stream;
+	};
+	export using LogOutputCallbackView = std::function< LogOutputContext(LogOutputContext) >&&; // Ideally would be function_view
 	using LoggingSink = std::function< void(LogOutputCallbackView) >;
 
 	export class ServerImplAPI
@@ -92,10 +118,10 @@ namespace lsp_boot
 		/**
 		 * Server side logger.
 		 */
-		template < std::invocable< LogOutputIter > Callback >
+		template < std::invocable< LogOutputContext > Callback >
 		auto log(Callback&& callback) const -> void
 		{
-			static_assert(std::convertible_to< std::invoke_result_t< Callback, LogOutputIter >, LogOutputIter >);
+			static_assert(std::convertible_to< std::invoke_result_t< Callback, LogOutputContext >, LogOutputContext >);
 			log_impl(std::forward< Callback >(callback));
 		}
 
@@ -106,8 +132,9 @@ namespace lsp_boot
 		auto log(std::basic_format_string< char, std::type_identity_t< Args >... > fmt_str, Args&&... args) const -> void
 		{
 			// @todo: currently this is assuming the logging sink is synchronous...
-			log_impl([&](LogOutputIter out) {
-				return std::format_to(out, fmt_str, std::forward< Args >(args)...);
+			log_impl([&](LogOutputContext out) {
+				std::format_to(out.iter(), fmt_str, std::forward< Args >(args)...);
+				return out;
 				});
 		}
 

@@ -38,7 +38,8 @@ namespace lsp_boot
 
 		log("Dispatching request: id={}, method={}", boost::json::serialize(request_id), method);
 		log([&](auto out) {
-			return std::ranges::copy(boost::json::serialize(msg), out).out;
+			std::ranges::copy(boost::json::serialize(msg), out.iter());
+			return out;
 			});
 
 		// @todo: not sure how best to appoach this, but as we currently return the request result synchronously we need to ensure that
@@ -100,7 +101,8 @@ namespace lsp_boot
 			{
 				static constexpr auto max_log_chars = 128;
 				log([&](auto out) {
-					return std::format_to(out, "Queueing response [success]: result={:s}...", boost::json::serialize(result->json) | std::views::take(max_log_chars));
+					std::format_to(out.iter(), "Queueing response [success]: result={:s}...", boost::json::serialize(result->json) | std::views::take(max_log_chars));
+					return out;
 					});
 
 				json["result"] = std::move(result->json);
@@ -108,7 +110,8 @@ namespace lsp_boot
 			else
 			{
 				log([&](auto out) {
-					return std::format_to(out, "Queueing response [failure]: error={}", boost::json::serialize(result.error()));
+					std::format_to(out.iter(), "Queueing response [failure]: error={}", boost::json::serialize(result.error()));
+					return out;
 					});
 
 				json["error"] = std::move(result).error();
@@ -125,7 +128,8 @@ namespace lsp_boot
 	{
 		log("Dispatching notification: method={}", method);
 		log([&](auto out) {
-			return std::ranges::copy(boost::json::serialize(msg), out).out;
+			std::ranges::copy(boost::json::serialize(msg), out.iter());
+			return out;
 			});
 
 		if (method == notifications::Initialized::name)
