@@ -234,6 +234,13 @@ namespace lsp_boot
 	{
 		while (!shutdown)
 		{
+			while (!internal_task_queue.empty())
+			{
+				auto& task = internal_task_queue.front();
+				task();
+				internal_task_queue.pop();
+			}
+
 			if (auto msg = in_queue.pop_with_abort([this] { return shutdown.load(); }); msg.has_value())
 			{
 				if (auto result = dispatch_message(std::move(*msg)); result.has_value())
