@@ -37,9 +37,10 @@ namespace lsp_boot
 #if not defined(LSP_BOOT_DISABLE_THREADS)
 		auto listen() -> int;
 #endif
-	// single-threaded
-	auto update_outgoing() -> void; // doesn't block
-	auto update() -> bool; // will block to read next incoming message
+		// single-threaded
+		auto update_outgoing() -> void; // doesn't block
+		//auto update_non_blocking() -> bool;
+		auto update() -> bool; // will block to read next incoming message
 
 	private:
 		auto read_message_header() -> std::optional< MessageHeader >;

@@ -274,76 +274,86 @@ namespace lsp_boot
 		push_job(std::move(notification));
 	}
 
+	auto Server::process_job_queue() -> bool
+	{
+		while (!pending_jobs.empty())
+		{
+			pump_external();
+			auto queue_result = process_incoming_queue_non_blocking();
+			if (queue_result.exit)
+			{
+				log("Server exiting as requested.");
+				return false;
+			}
+
+			// Nothing more in incoming queue, so run next potentially long-running job.
+			// (Long-running jobs are expected to periodically call the server pump to allow us to recheck queues, and also,
+			// in the single-threaded context, call our external pump to update the low level connection).
+
+			// @todo: not sure how best to appoach this, but as we currently return the request result synchronously we need to ensure that
+			// any pending notifications or prior requests that could potentially affect our result have already been processed.
+			// this would be fairly complex to try to handle based on what notifications there were and in what order they came, so for now
+			// we simply enforce synchronization before each request.
+			// may want to consider at least making the response async so we can move the pump invocation off the server dispatching thread.
+			{
+				auto scope = log_task_scope(*this, "Pumping implementation");
+				impl.pump();
+			}
+
+			using JobResult = void;
+
+			struct HandleJob
+			{
+				Server& self;
+
+				auto operator() (StoredRequest&& request) const -> JobResult
+				{
+					auto scope = log_task_scope(self, "Processing request: id={}, method={}", request.id, lsp::message_name(request.req));
+
+					auto result = self.handle_request(std::move(request.req));
+
+					if (result.has_value())
+					{
+						self.send_request_success_response(request.id, std::move(*result));
+					}
+					else
+					{
+						self.send_request_error_response(request.id, std::move(result.error()));
+					}
+				}
+
+				auto operator() (StoredNotification&& notification) const -> JobResult
+				{
+					auto scope = log_task_scope(self, "Processing notification: method={}", lsp::message_name(notification));
+
+					/*return*/ self.handle_notification(std::move(notification));
+				}
+
+				auto operator() (ServerInternalTask&& task) const -> JobResult
+				{
+					auto scope = log_task_scope(self, "Processing internal task");
+
+					/*return*/ std::move(task)();
+				}
+			};
+
+			auto& job = pending_jobs.front();
+			std::move(job).process(HandleJob{ *this });
+			pending_jobs.pop();
+		}
+
+		return true;
+	}
+
 #if not defined(LSP_BOOT_DISABLE_THREADS)
 	auto Server::run() -> void
 	{
 		while (!shutdown)
 		{
 			// Run any outstanding jobs to completion.
-			while (!pending_jobs.empty())
+			if (not process_job_queue())
 			{
-				pump_external();
-				auto queue_result = process_incoming_queue_non_blocking();
-				if (queue_result.exit)
-				{
-					log("Server exiting as requested.");
-					return;
-				}
-
-				// Nothing more in incoming queue, so run next potentially long-running job.
-				// (Long-running jobs are expected to periodically call the server pump to allow us to recheck queues, and also,
-				// in the single-threaded context, call our external pump to update the low level connection).
-
-				// @todo: not sure how best to appoach this, but as we currently return the request result synchronously we need to ensure that
-				// any pending notifications or prior requests that could potentially affect our result have already been processed.
-				// this would be fairly complex to try to handle based on what notifications there were and in what order they came, so for now
-				// we simply enforce synchronization before each request.
-				// may want to consider at least making the response async so we can move the pump invocation off the server dispatching thread.
-				{
-					auto scope = log_task_scope(*this, "Pumping implementation");
-					impl.pump();
-				}
-
-				using JobResult = void;
-
-				struct HandleJob
-				{
-					Server& self;
-
-					auto operator() (StoredRequest&& request) const -> JobResult
-					{
-						auto scope = log_task_scope(self, "Processing request: id={}, method={}", request.id, lsp::message_name(request.req));
-
-						auto result = self.handle_request(std::move(request.req));
-
-						if (result.has_value())
-						{
-							self.send_request_success_response(request.id, std::move(*result));
-						}
-						else
-						{
-							self.send_request_error_response(request.id, std::move(result.error()));
-						}
-					}
-
-					auto operator() (StoredNotification&& notification) const -> JobResult
-					{
-						auto scope = log_task_scope(self, "Processing notification: method={}", lsp::message_name(notification));
-
-						/*return*/ self.handle_notification(std::move(notification));
-					}
-
-					auto operator() (ServerInternalTask&& task) const -> JobResult
-					{
-						auto scope = log_task_scope(self, "Processing internal task");
-
-						/*return*/ std::move(task)();
-					}
-				};
-
-				auto& job = pending_jobs.front();
-				std::move(job).process(HandleJob{ *this });
-				pending_jobs.pop();
+				return;
 			}
 
 			// Now perform blocking wait on incoming queue.
@@ -387,38 +397,30 @@ namespace lsp_boot
 
 	auto Server::update() -> UpdateResult
 	{
-		//// Process any pending internal tasks to completion before attempting to grab new input messages.
-		//// @NOTE: This may be unnecessary, but it seems safest in case task completion is required in order for the server to reach a state
-		//// that might be expected to correctly handle incoming messages which follow on from an earlier one.
-		//while (!internal_task_queue.empty())
-		//{
-		//	pump_external();
-		//	auto& task = internal_task_queue.front();
-		//	task();
-		//	internal_task_queue.pop();
-		//}
+		while (true)
+		{
+			// Run any outstanding jobs to completion.
+			if (not process_job_queue())
+			{
+				return UpdateResult::shutdown;
+			}
 
-		//if (auto msg = in_queue.try_pop(); msg.has_value())
-		//{
-		//	if (auto result = dispatch_message(std::move(*msg)); result.has_value())
-		//	{
-		//		postprocess_message(*result);
+			if (auto msg = in_queue.try_pop(); msg.has_value())
+			{
+				auto dispatch_result = dispatch_message(std::move(*msg));
+				if (dispatch_result.exit)
+				{
+					log("Server exiting as requested.");
+					return UpdateResult::shutdown;
+				}
 
-		//		if (result->result.exit)
-		//		{
-		//			log("Server exiting as requested.");
-		//			return UpdateResult::shutdown;
-		//		}
-		//	}
-		//	else
-		//	{
-		//		// Failure
-		//		log("Server exiting unexpectedly, message dispatch failure.");
-		//		return UpdateResult::shutdown;
-		//	}
-
-		//	return UpdateResult::processed;
-		//}
+				//return UpdateResult::processed;
+			}
+			else
+			{
+				break;
+			}
+		}
 
 		return UpdateResult::idle;
 	}

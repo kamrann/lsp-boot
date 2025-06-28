@@ -366,6 +366,7 @@ namespace lsp_boot
 			return impl.handle_notification(std::move(notification));
 		}
 
+		auto process_job_queue() -> bool;
 		auto process_incoming_queue_non_blocking() -> InternalMessageResult;
 		auto postprocess_message(DispatchResult const&) const -> void;
 		auto pump_external() const -> void;

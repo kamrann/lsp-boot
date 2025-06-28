@@ -197,6 +197,18 @@ namespace lsp_boot
 		}
 	}
 
+	//auto StreamConnection::update_non_blocking() -> bool
+	//{
+	//	update_outgoing();
+
+	//	if (not in.good())
+	//	{
+	//		return false;
+	//	}
+
+	//	apparently a pain...
+	//}
+
 	auto StreamConnection::update() -> bool
 	{
 		// Dispatch anything waiting in the output queue
