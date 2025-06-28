@@ -440,4 +440,12 @@ namespace lsp_boot::lsp
 		notifications::DidCloseTextDocument,
 		notifications::DidChangeConfiguration
 	>;
+
+	export template < typename M >
+	auto message_name(M const& m)
+	{
+		return std::visit([]< typename T >(T const&) -> std::string_view {
+			return T::name;
+			}, m);
+	}
 }

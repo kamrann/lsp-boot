@@ -11,6 +11,7 @@ import std;
 #include <functional>
 #include <variant>
 #include <expected>
+#include <span>
 #include <queue>
 #include <iterator>
 #include <memory>
@@ -115,6 +116,11 @@ namespace lsp_boot
 			queue_internal_task_impl(std::move(task));
 		}
 
+		auto get_status() const -> boost::json::object
+		{
+			return get_status_impl();
+		}
+
 		/**
 		 * Server side logger.
 		 */
@@ -141,6 +147,7 @@ namespace lsp_boot
 	private:
 		virtual auto send_notification_impl(lsp::RawMessage&&) const -> void = 0;
 		virtual auto queue_internal_task_impl(ServerInternalTask&&) -> void = 0;
+		virtual auto get_status_impl() const -> boost::json::object = 0;
 		virtual auto log_impl(LogOutputCallbackView) const -> void = 0;
 	};
 
@@ -159,6 +166,7 @@ namespace lsp_boot
 		using RequestResult = std::expected< RequestSuccessResult, ResponseError >;
 		using NotificationResult = std::expected< NotificationSuccessResult, ResponseError >;
 		
+		using ExternalPump = std::function< void() >;
 		using ServerPump = std::function< void() >;
 
 		struct ServerImplementation
@@ -175,10 +183,11 @@ namespace lsp_boot
 		Server(
 			PendingInputQueue& pending_input_queue,
 			OutputQueue& output_queue,
+			ExternalPump external_pump,
 			ImplementationInit&& implementation_init,
 			LoggingSink logging_sink = {},
 			MetricsSink metrics_sink = {})
-			: in_queue{ pending_input_queue }, out_queue{ output_queue }, logger{ logging_sink }, metrics{ std::move(metrics_sink) }
+			: in_queue{ pending_input_queue }, out_queue{ output_queue }, ext_pump{ std::move(external_pump) }, logger{ logging_sink }, metrics{ std::move(metrics_sink) }
 		{
 			impl = wrap_implementation(std::forward< ImplementationInit >(implementation_init));
 		}
@@ -287,9 +296,65 @@ namespace lsp_boot
 			}
 		};
 
-		auto dispatch_request(std::string_view method, lsp::RawMessage&& msg) -> std::optional< InternalMessageResult >;
+		auto dispatch_request(std::string_view method, lsp::RawMessage&& msg) -> std::expected< InternalMessageResult, ResponseError >;
 		auto dispatch_notification(std::string_view method, lsp::RawMessage&& msg) -> InternalMessageResult;
-		auto dispatch_message(ReceivedMessage&& msg) -> std::optional< DispatchResult >;
+		auto dispatch_message(ReceivedMessage&& msg) -> InternalMessageResult;
+
+		using RequestId = std::uint64_t; // @todo: move to lsp interface partition
+
+		auto make_request_response(RequestId id) const -> boost::json::object;
+		auto send_request_success_response(RequestId id, RequestSuccessResult result) const -> void;
+		auto send_request_error_response(RequestId id, ResponseError error) const -> void;
+
+		struct StoredRequest
+		{
+			RequestId id;
+			lsp::Request req;
+		};
+
+		using StoredNotification = lsp::Notification;
+			
+		struct Job
+		{
+			using Variant = std::variant<
+				StoredRequest,
+				StoredNotification,
+				ServerInternalTask
+			>;
+
+			Job(StoredRequest request) : impl{ std::move(request) }
+			{
+			}
+			Job(StoredNotification notification) : impl{ std::move(notification) }
+			{
+			}
+			Job(ServerInternalTask task) : impl{ std::move(task) }
+			{
+			}
+
+			Variant impl;
+
+			auto process(auto&& handler) &&
+			{
+				return std::visit([&](auto&& j) {
+					return std::forward< decltype(handler) >(handler)(std::move(j));
+					}, std::move(impl));
+			}
+		};
+
+		using PendingJobs = std::queue< Job >;
+
+		auto push_job(Job job) -> void;
+		
+		/**
+		 * Stores request for later processing.
+		 */
+		auto push_request(RequestId id, lsp::Request request) -> void;
+
+		/**
+		 * Stores notification for later processing.
+		 */
+		auto push_notification(lsp::Notification notification) -> void;
 
 		auto handle_request(lsp::Request request) -> RequestResult
 		{
@@ -301,20 +366,25 @@ namespace lsp_boot
 			return impl.handle_notification(std::move(notification));
 		}
 
+		auto process_incoming_queue_non_blocking() -> InternalMessageResult;
 		auto postprocess_message(DispatchResult const&) const -> void;
+		auto pump_external() const -> void;
+		auto get_status() const -> boost::json::object;
 
 	private:
 		auto send_notification_impl(lsp::RawMessage&&) const -> void override;
 		auto queue_internal_task_impl(ServerInternalTask&&) -> void override;
+		auto get_status_impl() const -> boost::json::object override;
 		auto log_impl(LogOutputCallbackView) const -> void override;
 
 	private:
 		PendingInputQueue& in_queue;
 		OutputQueue& out_queue;
+		ExternalPump ext_pump;
+		PendingJobs pending_jobs;
 		ServerImplementation impl;
 		LoggingSink logger;
 		MetricsSink metrics;
-		std::queue< ServerInternalTask > internal_task_queue;
 #if not defined(LSP_BOOT_DISABLE_THREADS)
 		std::atomic< bool > shutdown;
 #endif
