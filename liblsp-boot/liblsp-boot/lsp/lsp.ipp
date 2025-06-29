@@ -33,7 +33,9 @@ namespace lsp_boot::lsp
 	{
 		using namespace std::string_view_literals;
 
+		constexpr auto base_uri = "baseUri"sv;
 		constexpr auto capabilities = "capabilities"sv;
+		constexpr auto changes = "changes"sv;
 		constexpr auto character = "character"sv;
 		constexpr auto code = "code"sv;
 		constexpr auto code_description = "codeDescription"sv;
@@ -41,20 +43,26 @@ namespace lsp_boot::lsp
 		constexpr auto contents = "contents"sv;
 		constexpr auto data = "data"sv;
 		constexpr auto diagnostics = "diagnostics"sv;
+		constexpr auto document_selector = "documentSelector"sv;
 		constexpr auto end = "end"sv;
 		constexpr auto href = "href"sv;
 		constexpr auto id = "id"sv;
+		constexpr auto glob_pattern = "globPattern"sv;
 		constexpr auto kind = "kind"sv;
 		constexpr auto label = "label"sv;
+		constexpr auto language = "language"sv;
 		constexpr auto line = "line"sv;
 		constexpr auto location = "location"sv;
 		constexpr auto message = "message"sv;
 		constexpr auto method = "method"sv;
 		constexpr auto name = "name"sv;
 		constexpr auto params = "params"sv;
+		constexpr auto pattern = "pattern"sv;
 		constexpr auto position = "position"sv;
 		constexpr auto range = "range"sv;
 		constexpr auto related_information = "relatedInformation"sv;
+		constexpr auto register_options = "registerOptions"sv;
+		constexpr auto registrations = "registrations"sv;
 		constexpr auto result = "result"sv;
 		constexpr auto root_path = "rootPath"sv;
 		constexpr auto root_uri = "rootUri"sv;
@@ -67,8 +75,11 @@ namespace lsp_boot::lsp
 		constexpr auto text_document = "textDocument"sv;
 		constexpr auto token_modifiers = "tokenModifiers"sv;
 		constexpr auto token_types = "tokenTypes"sv;
+		constexpr auto type = "type"sv;
+		constexpr auto unregistrations = "unregistrations"sv;
 		constexpr auto uri = "uri"sv;
 		constexpr auto value = "value"sv;
+		constexpr auto watchers = "watchers"sv;
 		constexpr auto workspace_folders = "workspaceFolders"sv;
 	}
 
@@ -378,6 +389,8 @@ namespace lsp_boot::lsp
 			semantic_tokens_full,
 			semantic_tokens_range,
 
+			register_capability,
+			unregister_capability,
 			semantic_tokens_refresh,
 		};
 
@@ -391,6 +404,8 @@ namespace lsp_boot::lsp
 		using SemanticTokensRange = JsonMessage< Kinds::semantic_tokens_range, "textDocument/semanticTokens/range" >;
 
 		// Server to Client
+		using RegisterCapability = JsonMessage< Kinds::register_capability, "client/registerCapability" >;
+		using UnregisterCapability = JsonMessage< Kinds::unregister_capability, "client/unregisterCapability" >;
 		using SemanticTokensRefresh = JsonMessage< Kinds::semantic_tokens_range, "workspace/semanticTokens/refresh" >;
 	}
 
@@ -405,6 +420,7 @@ namespace lsp_boot::lsp
 			did_change_text_document,
 			did_close_text_document,
 			did_change_configuration,
+			did_change_watched_files,
 
 			// From server
 			publish_diagnostics,
@@ -417,6 +433,7 @@ namespace lsp_boot::lsp
 		using DidChangeTextDocument = JsonMessage< Kinds::did_change_text_document, "textDocument/didChange" >;
 		using DidCloseTextDocument = JsonMessage< Kinds::did_close_text_document, "textDocument/didClose" >;
 		using DidChangeConfiguration = JsonMessage< Kinds::did_change_configuration, "workspace/didChangeConfiguration" >;
+		using DidChangeWatchedFiles = JsonMessage< Kinds::did_change_watched_files, "workspace/didChangeWatchedFiles" >;
 
 		// From server
 		using PublishDiagnostics = JsonMessage< Kinds::publish_diagnostics, "textDocument/publishDiagnostics" >;
@@ -438,7 +455,8 @@ namespace lsp_boot::lsp
 		notifications::DidOpenTextDocument,
 		notifications::DidChangeTextDocument,
 		notifications::DidCloseTextDocument,
-		notifications::DidChangeConfiguration
+		notifications::DidChangeConfiguration,
+		notifications::DidChangeWatchedFiles
 	>;
 
 	export template < typename M >

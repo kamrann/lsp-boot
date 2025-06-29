@@ -139,6 +139,10 @@ namespace lsp_boot
 		{
 			push_notification(notifications::DidCloseTextDocument(std::move(msg)));
 		}
+		else if (method == notifications::DidChangeWatchedFiles::name)
+		{
+			push_notification(notifications::DidChangeWatchedFiles(std::move(msg)));
+		}
 
 		return {};
 	}
