@@ -151,10 +151,11 @@ namespace lsp_boot
 			in.read(content.get(), hdr.content_length);
 			auto timestamp = std::chrono::system_clock::now();
 			boost::system::error_code ec;
-			auto value = boost::json::parse(std::string_view{ content.get(), hdr.content_length }, ec);
+			auto const header_content = std::string_view{ content.get(), hdr.content_length };
+			auto value = boost::json::parse(header_content, ec);
 			if (ec)
 			{
-				err << "Failure parsing received JSON" << std::endl;
+				err << std::format("Failure parsing received JSON: {}\nInput was:\n{}", ec.message(), header_content) << std::endl;
 				return std::nullopt;
 			}
 			return ReceivedMessage{
