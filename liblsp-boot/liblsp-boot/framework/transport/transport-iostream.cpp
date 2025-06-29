@@ -48,10 +48,21 @@ namespace lsp_boot
 
 		constexpr auto initial_newline_char = '\r';
 
+		char failed_newline[3] = { 0 };
+
 		auto const consume_newline = [&] {
 			char c1 = in.get();
 			char c2 = in.get();
-			return c1 == '\r' && c2 == '\n';
+			if (c1 == '\r' && c2 == '\n')
+			{
+				return true;
+			}
+			else
+			{
+				failed_newline[0] = c1;
+				failed_newline[1] = c2;
+				return false;
+			}
 			};
 		auto const consume_header_field_separator = [&] {
 			char sep[2];
@@ -68,22 +79,29 @@ namespace lsp_boot
 
 			// @todo: rewrite this. can just use getline for each field.
 
+			static constexpr auto expected_content_prefix_str = "Content-"sv;
+			static constexpr auto expected_content_length_str = "Length"sv;
+			static constexpr auto expected_content_type_str = "Type"sv;
+
 			char content_prefix[8];
 			in.read(content_prefix, 8);
-			if (in.fail() || !compare(content_prefix, "Content-"sv))
+			if (in.fail() || !compare(content_prefix, expected_content_prefix_str))
 			{
+				err << std::format("Error reading header, expected '{}'\nEncountered '{}'", expected_content_prefix_str, std::string_view{ content_prefix, 8 }) << std::endl;
 				return std::nullopt;
 			}
 			if (in.peek() == 'L')
 			{
 				char clength[6];
 				in.read(clength, 6);
-				if (in.fail() || !compare(clength, "Length"sv))
+				if (in.fail() || !compare(clength, expected_content_length_str))
 				{
+					err << std::format("Error reading header, expected '{}'\nEncountered '{}'", expected_content_length_str, std::string_view{ clength, 6 }) << std::endl;
 					return std::nullopt;
 				}
 				if (!consume_header_field_separator())
 				{
+					err << std::format("Error reading expected header field separator") << std::endl;
 					return std::nullopt;
 				}
 
@@ -95,10 +113,12 @@ namespace lsp_boot
 				in.read(ctype, 4);
 				if (in.fail() || !compare(ctype, "Type"sv) || !header.content_type.empty())
 				{
+					err << std::format("Error reading header, expected '{}'\nEncountered '{}'", expected_content_type_str, std::string_view{ ctype, 4 }) << std::endl;
 					return std::nullopt;
 				}
 				if (!consume_header_field_separator())
 				{
+					err << std::format("Error reading expected header field separator") << std::endl;
 					return std::nullopt;
 				}
 
@@ -109,11 +129,13 @@ namespace lsp_boot
 			}
 			else
 			{
+				err << std::format("Error reading header; unexpected input: '{}'", in.peek()) << std::endl;
 				return std::nullopt;
 			}
 
 			if (!consume_newline())
 			{
+				err << std::format("Error reading expected header newline; encountered [{}, {}]", int(failed_newline[0]), int(failed_newline[1])) << std::endl;
 				return std::nullopt;
 			}
 		}
