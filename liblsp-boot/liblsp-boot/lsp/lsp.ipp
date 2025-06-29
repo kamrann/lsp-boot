@@ -33,6 +33,7 @@ namespace lsp_boot::lsp
 	{
 		using namespace std::string_view_literals;
 
+		constexpr auto added = "added"sv;
 		constexpr auto base_uri = "baseUri"sv;
 		constexpr auto capabilities = "capabilities"sv;
 		constexpr auto changes = "changes"sv;
@@ -45,6 +46,7 @@ namespace lsp_boot::lsp
 		constexpr auto diagnostics = "diagnostics"sv;
 		constexpr auto document_selector = "documentSelector"sv;
 		constexpr auto end = "end"sv;
+		constexpr auto event = "event"sv;
 		constexpr auto href = "href"sv;
 		constexpr auto id = "id"sv;
 		constexpr auto glob_pattern = "globPattern"sv;
@@ -61,6 +63,7 @@ namespace lsp_boot::lsp
 		constexpr auto position = "position"sv;
 		constexpr auto range = "range"sv;
 		constexpr auto related_information = "relatedInformation"sv;
+		constexpr auto removed = "removed"sv;
 		constexpr auto register_options = "registerOptions"sv;
 		constexpr auto registrations = "registrations"sv;
 		constexpr auto result = "result"sv;
@@ -420,6 +423,7 @@ namespace lsp_boot::lsp
 			did_change_text_document,
 			did_close_text_document,
 			did_change_configuration,
+			did_change_workspace_folders,
 			did_change_watched_files,
 
 			// From server
@@ -433,6 +437,7 @@ namespace lsp_boot::lsp
 		using DidChangeTextDocument = JsonMessage< Kinds::did_change_text_document, "textDocument/didChange" >;
 		using DidCloseTextDocument = JsonMessage< Kinds::did_close_text_document, "textDocument/didClose" >;
 		using DidChangeConfiguration = JsonMessage< Kinds::did_change_configuration, "workspace/didChangeConfiguration" >;
+		using DidChangeWorkspaceFolders = JsonMessage< Kinds::did_change_workspace_folders, "workspace/didChangeWorkspaceFolders" >;
 		using DidChangeWatchedFiles = JsonMessage< Kinds::did_change_watched_files, "workspace/didChangeWatchedFiles" >;
 
 		// From server
@@ -456,6 +461,7 @@ namespace lsp_boot::lsp
 		notifications::DidChangeTextDocument,
 		notifications::DidCloseTextDocument,
 		notifications::DidChangeConfiguration,
+		notifications::DidChangeWorkspaceFolders,
 		notifications::DidChangeWatchedFiles
 	>;
 
