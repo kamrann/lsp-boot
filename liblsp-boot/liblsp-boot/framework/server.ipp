@@ -101,6 +101,14 @@ namespace lsp_boot
 	{
 	public:
 		/**
+		 * Send an LSP request to the client.
+		 */
+		auto send_request(lsp::RawMessage&& msg) const -> void
+		{
+			send_request_impl(std::move(msg));
+		}
+
+		/**
 		 * Send an LSP notification to the client.
 		 */
 		auto send_notification(lsp::RawMessage&& msg) const -> void
@@ -145,6 +153,7 @@ namespace lsp_boot
 		}
 
 	private:
+		virtual auto send_request_impl(lsp::RawMessage&&) const -> void = 0;
 		virtual auto send_notification_impl(lsp::RawMessage&&) const -> void = 0;
 		virtual auto queue_internal_task_impl(ServerInternalTask&&) -> void = 0;
 		virtual auto get_status_impl() const -> boost::json::object = 0;
@@ -373,6 +382,7 @@ namespace lsp_boot
 		auto get_status() const -> boost::json::object;
 
 	private:
+		auto send_request_impl(lsp::RawMessage&&) const -> void override;
 		auto send_notification_impl(lsp::RawMessage&&) const -> void override;
 		auto queue_internal_task_impl(ServerInternalTask&&) -> void override;
 		auto get_status_impl() const -> boost::json::object override;

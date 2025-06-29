@@ -478,6 +478,11 @@ namespace lsp_boot
 		};
 	}
 
+	auto Server::send_request_impl(lsp::RawMessage&& msg) const -> void
+	{
+		out_queue.push(std::move(msg));
+	}
+
 	auto Server::send_notification_impl(lsp::RawMessage&& msg) const -> void
 	{
 		out_queue.push(std::move(msg));
