@@ -11,6 +11,7 @@ import std;
 #else
 #include <utility>
 #include <optional>
+#include <expected>
 #include <string_view>
 #include <string>
 #include <ranges>
