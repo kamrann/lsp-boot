@@ -73,6 +73,10 @@ namespace lsp_boot
 		{
 			push_request(request_id, requests::Shutdown(std::move(msg)));
 		}
+		else if (method == requests::Completion::name)
+		{
+			push_request(request_id, requests::Completion(std::move(msg)));
+		}
 		//else if (method == requests::DocumentHighlight::name)
 		//{
 		//	push_request(request_id, requests::DocumentHighlight(std::move(msg)));

@@ -34,22 +34,43 @@ namespace lsp_boot::lsp
 		using namespace std::string_view_literals;
 
 		constexpr auto added = "added"sv;
+		constexpr auto all_commit_characters = "allCommitCharacters"sv;
 		constexpr auto base_uri = "baseUri"sv;
 		constexpr auto capabilities = "capabilities"sv;
 		constexpr auto changes = "changes"sv;
 		constexpr auto character = "character"sv;
 		constexpr auto code = "code"sv;
 		constexpr auto code_description = "codeDescription"sv;
+		constexpr auto command = "command"sv;
+		constexpr auto commit_characters = "commitCharacters"sv;
+		constexpr auto commit_characters_support = "commitCharactersSupport"sv;
+		constexpr auto completion_item = "completionItem"sv;
+		constexpr auto completion_item_kind = "completionItemKind"sv;
 		constexpr auto content_changes = "contentChanges"sv;
 		constexpr auto contents = "contents"sv;
+		constexpr auto context = "context"sv;
+		constexpr auto context_support = "contextSupport"sv;
 		constexpr auto data = "data"sv;
+		constexpr auto detail = "detail"sv;
+		constexpr auto description = "description"sv;
 		constexpr auto diagnostics = "diagnostics"sv;
 		constexpr auto document_selector = "documentSelector"sv;
+		constexpr auto documentation = "documentation"sv;
+		constexpr auto documentation_format = "documentationFormat"sv;
+		constexpr auto edit_range = "editRange"sv;
 		constexpr auto end = "end"sv;
 		constexpr auto event = "event"sv;
+		constexpr auto filter_text = "filterText"sv;
+		constexpr auto glob_pattern = "globPattern"sv;
 		constexpr auto href = "href"sv;
 		constexpr auto id = "id"sv;
-		constexpr auto glob_pattern = "globPattern"sv;
+		constexpr auto insert = "insert"sv;
+		constexpr auto insert_text = "insertText"sv;
+		constexpr auto insert_text_format = "insertTextFormat"sv;
+		constexpr auto insert_text_mode = "insertTextMode"sv;
+		constexpr auto is_incomplete = "isIncomplete"sv;
+		constexpr auto item_defaults = "itemDefaults"sv;
+		constexpr auto items = "items"sv;
 		constexpr auto kind = "kind"sv;
 		constexpr auto label = "label"sv;
 		constexpr auto language = "language"sv;
@@ -58,26 +79,37 @@ namespace lsp_boot::lsp
 		constexpr auto message = "message"sv;
 		constexpr auto method = "method"sv;
 		constexpr auto name = "name"sv;
+		constexpr auto new_text = "newText"sv;
 		constexpr auto params = "params"sv;
 		constexpr auto pattern = "pattern"sv;
 		constexpr auto position = "position"sv;
 		constexpr auto range = "range"sv;
-		constexpr auto related_information = "relatedInformation"sv;
-		constexpr auto removed = "removed"sv;
 		constexpr auto register_options = "registerOptions"sv;
 		constexpr auto registrations = "registrations"sv;
+		constexpr auto related_information = "relatedInformation"sv;
+		constexpr auto removed = "removed"sv;
+		constexpr auto replace = "replace"sv;
+		constexpr auto resolve_provider = "resolveProvider"sv;
+		constexpr auto resolve_support = "resolveSupport"sv;
 		constexpr auto result = "result"sv;
 		constexpr auto root_path = "rootPath"sv;
 		constexpr auto root_uri = "rootUri"sv;
 		constexpr auto selection_range = "selectionRange"sv;
 		constexpr auto severity = "severity"sv;
+		constexpr auto snippet_support = "snippetSupport"sv;
+		constexpr auto sort_text = "sortText"sv;
 		constexpr auto source = "source"sv;
 		constexpr auto start = "start"sv;
 		constexpr auto tags = "tags"sv;
 		constexpr auto text = "text"sv;
 		constexpr auto text_document = "textDocument"sv;
+		constexpr auto text_edit = "textEdit"sv;
+		constexpr auto text_edit_text = "textEditText"sv;
 		constexpr auto token_modifiers = "tokenModifiers"sv;
 		constexpr auto token_types = "tokenTypes"sv;
+		constexpr auto trigger_character = "triggerCharacter"sv;
+		constexpr auto trigger_characters = "triggerCharacters"sv;
+		constexpr auto trigger_kind = "triggerKind"sv;
 		constexpr auto type = "type"sv;
 		constexpr auto unregistrations = "unregistrations"sv;
 		constexpr auto uri = "uri"sv;
@@ -386,6 +418,7 @@ namespace lsp_boot::lsp
 		{
 			initialize,
 			shutdown,
+			completion,
 			document_symbols,
 			inlay_hint,
 			hover,
@@ -400,6 +433,7 @@ namespace lsp_boot::lsp
 		// Client to Server
 		using Initialize = JsonMessage< Kinds::initialize, "initialize" >;
 		using Shutdown = JsonMessage< Kinds::shutdown, "shutdown" >;
+		using Completion = JsonMessage< Kinds::completion, "textDocument/completion" >;
 		using DocumentSymbols = JsonMessage< Kinds::document_symbols, "textDocument/documentSymbol" >;
 		using InlayHint = JsonMessage< Kinds::inlay_hint, "textDocument/inlayHint" >;
 		using Hover = JsonMessage< Kinds::hover, "textDocument/hover" >;
@@ -447,6 +481,7 @@ namespace lsp_boot::lsp
 	export using Request = std::variant<
 		requests::Initialize,
 		requests::Shutdown,
+		requests::Completion,
 		requests::DocumentSymbols,
 		requests::InlayHint,
 		requests::Hover,
