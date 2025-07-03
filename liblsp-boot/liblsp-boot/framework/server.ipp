@@ -97,15 +97,17 @@ namespace lsp_boot
 	export using LogOutputCallbackView = std::function< LogOutputContext(LogOutputContext) >&&; // Ideally would be function_view
 	using LoggingSink = std::function< void(LogOutputCallbackView) >;
 
+	export using ResponseHandlerFn = std::function< void(boost::json::object) >; // @todo: not sure it needs to be object?
+
 	export class ServerImplAPI
 	{
 	public:
 		/**
 		 * Send an LSP request to the client.
 		 */
-		auto send_request(lsp::RawMessage&& msg) const -> void
+		auto send_request(lsp::RawMessage&& msg, ResponseHandlerFn&& handler) -> void
 		{
-			send_request_impl(std::move(msg));
+			send_request_impl(std::move(msg), std::move(handler));
 		}
 
 		/**
@@ -153,7 +155,7 @@ namespace lsp_boot
 		}
 
 	private:
-		virtual auto send_request_impl(lsp::RawMessage&&) const -> void = 0;
+		virtual auto send_request_impl(lsp::RawMessage&&, ResponseHandlerFn&& handler) -> void = 0;
 		virtual auto send_notification_impl(lsp::RawMessage&&) const -> void = 0;
 		virtual auto queue_internal_task_impl(ServerInternalTask&&) -> void = 0;
 		virtual auto get_status_impl() const -> boost::json::object = 0;
@@ -381,8 +383,17 @@ namespace lsp_boot
 		auto pump_external() const -> void;
 		auto get_status() const -> boost::json::object;
 
+		struct PendingResponseHandler
+		{
+			ResponseHandlerFn handler_fn;
+		};
+
+		using OutstandingRequestId = std::string;
+
+		std::unordered_map< OutstandingRequestId, PendingResponseHandler > pending_response_handlers_;
+
 	private:
-		auto send_request_impl(lsp::RawMessage&&) const -> void override;
+		auto send_request_impl(lsp::RawMessage&&, ResponseHandlerFn&& handler) -> void override;
 		auto send_notification_impl(lsp::RawMessage&&) const -> void override;
 		auto queue_internal_task_impl(ServerInternalTask&&) -> void override;
 		auto get_status_impl() const -> boost::json::object override;

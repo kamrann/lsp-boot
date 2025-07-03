@@ -56,6 +56,7 @@ namespace lsp_boot
 		}
 
 		// @todo: try_value_to and error handling, below also.
+		// @todo: not sure why we're assuming integer request ids?
 		auto const request_id = value_to< RequestId >(msg.find(keys::id)->value());
 
 		log("Dispatching request: id={}, method={}", request_id, method);
@@ -190,14 +191,14 @@ namespace lsp_boot
 			return "?"sv;
 			};
 
-		auto const id_str = id_it != json_msg.end() ? std::invoke([&]() -> std::optional< std::string > { auto res = try_value_to< RequestId >(id_it->value()); return res.has_value() ? std::optional(std::to_string(*res)) : std::nullopt; }) : "?"s;
+		//auto const id_str = id_it != json_msg.end() ? std::invoke([&]() -> std::optional< std::string > { auto res = try_value_to< RequestId >(id_it->value()); return res.has_value() ? std::optional(std::to_string(*res)) : std::nullopt; }) : "?"s;
 		auto const method_str = method_it != json_msg.end() ? std::invoke([&]() -> std::optional< std::string_view > { return method_it->value().is_string() ? std::optional(std::string_view(method_it->value().get_string())) : std::nullopt; }) : "?"sv;
-		if (!id_str || !method_str)
+		if (/*!id_str || */ !method_str)
 		{
 			return {};
 		}
 
-		auto const identifier = std::format("{}:{} [{}]", *id_str, *method_str, extract_document_id());
+		//auto const identifier = std::format("{}:{} [{}]", *id_str, *method_str, extract_document_id());
 		auto result = std::invoke([&]() -> InternalMessageResult {
 			if (id_it != json_msg.end())
 			{
@@ -206,12 +207,46 @@ namespace lsp_boot
 					auto dispatch_result = dispatch_request(*method_str, std::move(json_msg));
 					if (!dispatch_result)
 					{
-						send_request_error_response(value_to< RequestId >(json_msg.find(keys::id)->value()), std::move(dispatch_result.error()));
+						send_request_error_response(value_to< RequestId >(id_it->value()), std::move(dispatch_result.error()));
 						return {};
 					}
 					else
 					{
 						return *dispatch_result;
+					}
+				}
+				else
+				{
+					// Assume is a response
+					if (id_it->value().is_string())
+					{
+						auto const request_id = std::string{ id_it->value().as_string() };
+						if (auto const handler_iter = pending_response_handlers_.find(request_id); handler_iter != pending_response_handlers_.end())
+						{
+							if (handler_iter->second.handler_fn)
+							{
+								// @todo: should probably invoke on an internal task.
+
+								// @todo: should modify handler sig to specify either result or error.
+								if (auto const result_iter = json_msg.find(keys::result); result_iter != json_msg.end())
+								{
+									handler_iter->second.handler_fn(result_iter->value().as_object());
+								}
+								else if (auto const error_iter = json_msg.find(keys::error); error_iter != json_msg.end())
+								{
+									handler_iter->second.handler_fn(error_iter->value().as_object());
+								}
+								else
+								{
+									// @todo: log protocol error - should have either result or error.
+								}
+							}
+							pending_response_handlers_.erase(handler_iter);
+						}
+						else
+						{
+							// @todo: no associated response handler, shouldn't happen, log warning at least.
+						}
 					}
 				}
 			}
@@ -486,8 +521,11 @@ namespace lsp_boot
 		};
 	}
 
-	auto Server::send_request_impl(lsp::RawMessage&& msg) const -> void
+	auto Server::send_request_impl(lsp::RawMessage&& msg, ResponseHandlerFn&& handler) -> void
 	{
+		auto id = std::string{ msg["id"].as_string() };
+		auto const [iter, added] = pending_response_handlers_.try_emplace(id, std::move(handler));
+		//assert(added);
 		out_queue.push(std::move(msg));
 	}
 

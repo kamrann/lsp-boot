@@ -60,6 +60,7 @@ namespace lsp_boot::lsp
 		constexpr auto edit_range = "editRange"sv;
 		constexpr auto end = "end"sv;
 		constexpr auto event = "event"sv;
+		constexpr auto error = "error"sv;
 		constexpr auto filter_text = "filterText"sv;
 		constexpr auto glob_pattern = "globPattern"sv;
 		constexpr auto href = "href"sv;
