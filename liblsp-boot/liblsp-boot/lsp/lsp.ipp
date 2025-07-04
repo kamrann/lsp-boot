@@ -65,6 +65,7 @@ namespace lsp_boot::lsp
 		constexpr auto glob_pattern = "globPattern"sv;
 		constexpr auto href = "href"sv;
 		constexpr auto id = "id"sv;
+		constexpr auto initialization_options = "initializationOptions"sv;
 		constexpr auto insert = "insert"sv;
 		constexpr auto insert_text = "insertText"sv;
 		constexpr auto insert_text_format = "insertTextFormat"sv;
@@ -96,6 +97,7 @@ namespace lsp_boot::lsp
 		constexpr auto root_path = "rootPath"sv;
 		constexpr auto root_uri = "rootUri"sv;
 		constexpr auto selection_range = "selectionRange"sv;
+		constexpr auto settings = "settings"sv;
 		constexpr auto severity = "severity"sv;
 		constexpr auto snippet_support = "snippetSupport"sv;
 		constexpr auto sort_text = "sortText"sv;
