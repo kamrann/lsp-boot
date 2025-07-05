@@ -12,12 +12,14 @@ import std;
 #include <utility>
 #include <optional>
 #include <expected>
+#include <variant>
 #include <string_view>
 #include <string>
 #include <ranges>
 #include <chrono>
 #include <format>
 #endif
+#include <cassert>
 
 module lsp_boot.server;
 
@@ -104,8 +106,12 @@ namespace lsp_boot
 		}
 		else
 		{
-			return make_not_implemented_result();
+			push_request(request_id, requests::Custom(method, std::move(msg)));
 		}
+		//else
+		//{
+		//	return make_not_implemented_result();
+		//}
 
 		return InternalMessageResult{};
 	}
@@ -152,6 +158,10 @@ namespace lsp_boot
 		else if (method == notifications::DidChangeWatchedFiles::name)
 		{
 			push_notification(notifications::DidChangeWatchedFiles(std::move(msg)));
+		}
+		else
+		{
+			push_notification(notifications::Custom(method, std::move(msg)));
 		}
 
 		return {};
@@ -354,15 +364,24 @@ namespace lsp_boot
 			{
 				Server& self;
 
+				// @todo: think we need to take result from handle_request/handle_notification, and potentially return
+				// not implemented result if the implementation had no corresponding handler. see commented out make_not_implemented_result() call above.
+
 				auto operator() (StoredRequest&& request) const -> JobResult
 				{
 					auto scope = log_task_scope(self, "Processing request: id={}, method={}", request.id, lsp::message_name(request.req));
 
+					bool const is_initialize_request = std::holds_alternative< lsp::requests::Initialize >(request.req);
 					auto result = self.handle_request(std::move(request.req));
 
 					if (result.has_value())
 					{
 						self.send_request_success_response(request.id, std::move(*result));
+
+						if (is_initialize_request)
+						{
+							self.has_initialized = true;
+						}
 					}
 					else
 					{
@@ -523,6 +542,7 @@ namespace lsp_boot
 
 	auto Server::send_request_impl(lsp::RawMessage&& msg, ResponseHandlerFn&& handler) -> void
 	{
+		assert(has_initialized);
 		auto id = std::string{ msg["id"].as_string() };
 		auto const [iter, added] = pending_response_handlers_.try_emplace(id, std::move(handler));
 		//assert(added);
@@ -531,6 +551,7 @@ namespace lsp_boot
 
 	auto Server::send_notification_impl(lsp::RawMessage&& msg) const -> void
 	{
+		assert(has_initialized);
 		out_queue.push(std::move(msg));
 	}
 

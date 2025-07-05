@@ -405,6 +405,7 @@ namespace lsp_boot
 		ExternalPump ext_pump;
 		PendingJobs pending_jobs;
 		ServerImplementation impl;
+		bool has_initialized = false; // set after having returned successfully from Initialize request handler.
 		LoggingSink logger;
 		MetricsSink metrics;
 #if not defined(LSP_BOOT_DISABLE_THREADS)

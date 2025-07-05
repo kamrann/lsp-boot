@@ -414,6 +414,21 @@ namespace lsp_boot::lsp
 		RawMessage js;
 	};
 
+	export template < auto msg_id >
+	class CustomMessage : public JsonMessage< msg_id, "?" >
+	{
+	public:
+		using Base = JsonMessage< msg_id, "?" >;
+		using typename Base::RawMessage;
+
+		CustomMessage(std::string_view const method, RawMessage&& raw) : Base(std::move(raw))
+			, method_name{ method }
+		{
+		}
+
+		std::string method_name;
+	};
+
 
 	export namespace requests
 	{
@@ -431,6 +446,8 @@ namespace lsp_boot::lsp
 			register_capability,
 			unregister_capability,
 			semantic_tokens_refresh,
+
+			custom,
 		};
 
 		// Client to Server
@@ -447,6 +464,8 @@ namespace lsp_boot::lsp
 		using RegisterCapability = JsonMessage< Kinds::register_capability, "client/registerCapability" >;
 		using UnregisterCapability = JsonMessage< Kinds::unregister_capability, "client/unregisterCapability" >;
 		using SemanticTokensRefresh = JsonMessage< Kinds::semantic_tokens_range, "workspace/semanticTokens/refresh" >;
+
+		using Custom = CustomMessage< Kinds::custom >;
 	}
 
 	export namespace notifications
@@ -465,6 +484,8 @@ namespace lsp_boot::lsp
 
 			// From server
 			publish_diagnostics,
+
+			custom,
 		};
 
 		// From client
@@ -476,9 +497,11 @@ namespace lsp_boot::lsp
 		using DidChangeConfiguration = JsonMessage< Kinds::did_change_configuration, "workspace/didChangeConfiguration" >;
 		using DidChangeWorkspaceFolders = JsonMessage< Kinds::did_change_workspace_folders, "workspace/didChangeWorkspaceFolders" >;
 		using DidChangeWatchedFiles = JsonMessage< Kinds::did_change_watched_files, "workspace/didChangeWatchedFiles" >;
-
+		
 		// From server
 		using PublishDiagnostics = JsonMessage< Kinds::publish_diagnostics, "textDocument/publishDiagnostics" >;
+
+		using Custom = CustomMessage< Kinds::custom >;
 	}
 
 	export using Request = std::variant<
@@ -489,7 +512,8 @@ namespace lsp_boot::lsp
 		requests::InlayHint,
 		requests::Hover,
 		requests::SemanticTokensFull,
-		requests::SemanticTokensRange
+		requests::SemanticTokensRange,
+		requests::Custom
 	>;
 
 	export using Notification = std::variant<
@@ -500,7 +524,8 @@ namespace lsp_boot::lsp
 		notifications::DidCloseTextDocument,
 		notifications::DidChangeConfiguration,
 		notifications::DidChangeWorkspaceFolders,
-		notifications::DidChangeWatchedFiles
+		notifications::DidChangeWatchedFiles,
+		notifications::Custom
 	>;
 
 	export template < typename M >
