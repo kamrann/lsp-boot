@@ -62,8 +62,9 @@ namespace lsp_boot
 		auto const request_id = value_to< RequestId >(msg.find(keys::id)->value());
 
 		log("Dispatching request: id={}, method={}", request_id, method);
+		// @todo: logging verbosity control. for now just truncating.
 		log([&](auto out) {
-			std::ranges::copy(boost::json::serialize(msg), out.iter());
+			std::ranges::copy(boost::json::serialize(msg) | std::views::take(1024), out.iter());
 			return out;
 			});
 
@@ -119,8 +120,9 @@ namespace lsp_boot
 	auto Server::dispatch_notification(std::string_view const method, lsp::RawMessage&& msg) -> InternalMessageResult
 	{
 		log("Dispatching notification: method={}", method);
+		// @todo: logging verbosity control. for now just truncating.
 		log([&](auto out) {
-			std::ranges::copy(boost::json::serialize(msg), out.iter());
+			std::ranges::copy(boost::json::serialize(msg) | std::views::take(1024), out.iter());
 			return out;
 			});
 
