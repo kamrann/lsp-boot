@@ -1,5 +1,3 @@
-# Use the latest 2.1 version of CircleCI pipeline process engine.
-# See: https://circleci.com/docs/configuration-reference
 version: 2.1
 
 parameters:
@@ -7,45 +5,11 @@ parameters:
     type: integer
     default: 1
 
-commands:
-  install-clang:
-    parameters:
-      version:
-        type: enum
-        enum: ["19", "20", "21"]
-    steps:
-      - run:
-          name: "Install clang"
-          command: |
-            sudo mkdir -p /usr/share/keyrings
-            curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/llvm-snapshot.gpg
-            sudo chmod a+r /etc/apt/keyrings/llvm-snapshot.gpg
-            #echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/llvm-snapshot.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-<< parameters.version >> main" | sudo tee /etc/apt/sources.list.d/llvm-snapshot.list > /dev/null
-            echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/llvm-snapshot.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble main" | sudo tee /etc/apt/sources.list.d/llvm-snapshot.list > /dev/null
-            cat /etc/apt/sources.list.d/llvm-snapshot.list
-            sudo apt update
-            #sudo apt-get install clang-<< parameters.version >> lldb-<< parameters.version >> lld-<< parameters.version >> libc++-<< parameters.version >>-dev libc++abi-<< parameters.version >>-dev
-            sudo apt-get install clang lldb lld libc++-dev libc++abi-dev
-            clang++ --version
-
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/jobs-steps/#jobs-overview & https://circleci.com/docs/configuration-reference/#jobs
 jobs:
   build:
     docker:
-      # Specify the version you desire here
-      # See: https://circleci.com/developer/images/image/cimg/base
-      - image: cimg/base:current
+      - image: cjangus/fedora-42-test-image
     steps:
-      - run:
-          name: "Install build2"
-          # @todo: use packages.sha256 file to determine latest filename
-          command: |
-            curl -fsSL -o /tmp/staged-build2-toolchain.deb https://stage.build2.org/0/0.18.0-a.0/bindist/ubuntu/ubuntu24.04/x86_64/build2-toolchain_0.18.0~a.0.20250624143108.52d2cec0bbec-0~ubuntu24.04_amd64.deb
-            sudo apt install /tmp/staged-build2-toolchain.deb
-            b --version
-      - install-clang:
-          version: "19"
       - checkout:
           path: repo
       - run:
@@ -58,9 +22,9 @@ jobs:
             bdep init --verbose $VERBOSE --no-progress --bpkg-option --trust-yes -C ../out cc config.cxx="clang++ -stdlib=libc++" \
               config.cc.reprocess=true \
               config.cxx.std=experimental config.cxx.features.modules=true
-            # can't work out syntax to specify these in bdep init...
-            bdep sync kcore config.kcore.enable_modules=true config.kcore.enable_tp_modules=true config.kcore.enable_import_std=false
-            bdep sync kdeps config.kdeps.enable_modules=true config.kdeps.enable_import_std=false
+            # @todo: temp experimentation. some builds of heavier repos were timing out, but some comba of verbose output or this suppressed it.
+            # something off though, the 10m timeout should only be if the job creates no output, but it looked as if something was blocking the output
+            # rather than the clang invocations actually hanging in any way.
             (
               while true; do
               echo "==== $(date) ===="
@@ -70,19 +34,15 @@ jobs:
             ) & MONITOR_PID=$!
             bdep update -j 2 --verbose $VERBOSE --no-progress
             kill $MONITOR_PID
-          no_output_timeout: 30m
   debug:
     docker:
-      - image: cimg/base:current
+      - image: cjangus/fedora-42-test-image
     steps:
       - run:
           name: Keep container alive for SSH
           command: sleep 1h
 
-# Orchestrate jobs using workflows
-# See: https://circleci.com/docs/workflows/ & https://circleci.com/docs/configuration-reference/#workflows
 workflows:
-  say-hello-workflow: # This is the name of the workflow, feel free to change it to better match your workflow.
-    # Inside the workflow, you define the jobs you want to run.
+  build:
     jobs:
       - build
