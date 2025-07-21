@@ -73,7 +73,7 @@ int main ()
 		return std::make_unique< ExampleImpl >(send_notify);
 		};
 
-	auto server = lsp_boot::Server(input_queue, output_queue, server_impl_init);
+	auto server = lsp_boot::Server(input_queue, output_queue, [] {}, server_impl_init);
 	auto connection = lsp_boot::StreamConnection(input_queue, output_queue, in, out, std::cerr);
 
 	bool connection_done = false;

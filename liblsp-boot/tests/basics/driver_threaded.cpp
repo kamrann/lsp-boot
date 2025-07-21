@@ -78,7 +78,7 @@ int main ()
 			return std::make_unique< ExampleImpl >(send_notify);
 			};
 
-		auto server = lsp_boot::Server(input_queue, output_queue, server_impl_init);
+		auto server = lsp_boot::Server(input_queue, output_queue, [] {}, server_impl_init);
 		auto server_thread = lsp_boot::Thread([&] {
 			server.run();
 			std::cerr << "Server execution completed." << std::endl;
