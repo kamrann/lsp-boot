@@ -15,5 +15,5 @@ cxx{*}: extension = cpp
 #
 test.target = $cxx.target
 
-config [bool]    config.liblsp_boot.enable_import_std				 ?= ($cxx.class == 'msvc')
+config [bool]    config.liblsp_boot.enable_import_std				 ?= $cxx.features.modules
 config [bool]	 config.liblsp_boot.disable_threads					 ?= false
