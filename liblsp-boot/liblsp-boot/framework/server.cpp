@@ -16,6 +16,7 @@ import std;
 #include <string_view>
 #include <string>
 #include <ranges>
+#include <functional>
 #include <chrono>
 #include <format>
 #endif
