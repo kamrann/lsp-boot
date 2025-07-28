@@ -356,6 +356,7 @@ namespace lsp_boot
 			// this would be fairly complex to try to handle based on what notifications there were and in what order they came, so for now
 			// we simply enforce synchronization before each request.
 			// may want to consider at least making the response async so we can move the pump invocation off the server dispatching thread.
+			if (has_initialized)
 			{
 				auto scope = log_task_scope(*this, "Pumping implementation");
 				impl.pump();
