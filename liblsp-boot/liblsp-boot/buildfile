@@ -2,6 +2,8 @@ intf_libs = # Interface dependencies.
 impl_libs = # Implementation dependencies.
 
 import intf_libs += libboost-json%lib{boost_json}
+if ($config.liblsp_boot.disable_threads == false)
+  import intf_libs += libasio%lib{asio}
 
 lib{lsp-boot}: {mxx cxx}{**} hxx{version} $impl_libs $intf_libs
 

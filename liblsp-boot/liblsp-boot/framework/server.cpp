@@ -6,6 +6,10 @@ module;
 #include <boost/json/value_to.hpp>
 #endif
 
+#if not defined(LSP_BOOT_DISABLE_THREADS)
+#include <asio.hpp>
+#endif
+
 #if defined(LSP_BOOT_ENABLE_IMPORT_STD)
 import std;
 #else
@@ -16,6 +20,7 @@ import std;
 #include <string_view>
 #include <string>
 #include <ranges>
+#include <algorithm>
 #include <functional>
 #include <chrono>
 #include <format>
@@ -30,6 +35,24 @@ using namespace std::string_view_literals;
 namespace lsp_boot
 {
 	using namespace lsp;
+
+	constexpr auto message_logging_string_element_char_limit = 1024uz;
+	constexpr auto message_logging_hard_char_limit = 512;// 1 << 24;
+
+	//auto format_message_for_logging(auto msg)
+	//{
+	//	struct Visitor
+	//	{
+	//		auto operator() (boost::json::object&& obj) const
+	//		{
+
+	//		}
+	//	};
+
+	//	boost::json::visit()
+	//	if (msg.contains(keys::params) and msg.at(keys::params).contains())
+	//	return boost::json::serialize(msg) | std::views::take(message_logging_hard_char_limit)
+	//}
 
 	template < typename... Args >
 	auto log_task_scope(ServerImplAPI const& server, std::basic_format_string< char, std::type_identity_t< Args >... > fmt_str, Args&&... args)
@@ -51,6 +74,86 @@ namespace lsp_boot
 		return ScopedTimer{ server };
 	}
 
+	struct Server::TimedJobEntry
+	{
+#if not defined(LSP_BOOT_DISABLE_THREADS)
+		TimedJobEntry(Job&& j, asio::io_context& io) : job{ std::move(j) }, timer(io)
+		{
+		}
+
+		Job job;
+		asio::steady_timer timer;
+		std::uint64_t generation = 0;
+#endif
+	};
+
+	using JobResult = void;
+
+	struct Server::HandleJob
+	{
+		Server& self;
+
+		// @todo: think we need to take result from handle_request/handle_notification, and potentially return
+		// not implemented result if the implementation had no corresponding handler. see commented out make_not_implemented_result() call above.
+
+		auto operator() (StoredRequest&& request) const -> JobResult
+		{
+			auto scope = log_task_scope(self, "Processing request: id={}, method={}", request.id, lsp::message_name(request.req));
+
+			bool const is_initialize_request = std::holds_alternative< lsp::requests::Initialize >(request.req);
+			auto result = self.handle_request(std::move(request.req));
+
+			if (result.has_value())
+			{
+				self.send_request_success_response(request.id, std::move(*result));
+
+				if (is_initialize_request)
+				{
+					self.has_initialized = true;
+				}
+			}
+			else
+			{
+				self.send_request_error_response(request.id, std::move(result.error()));
+			}
+		}
+
+		auto operator() (StoredNotification&& notification) const -> JobResult
+		{
+			auto scope = log_task_scope(self, "Processing notification: method={}", lsp::message_name(notification));
+
+			/*return*/ self.handle_notification(std::move(notification));
+		}
+
+		auto operator() (ServerInternalTask&& task) const -> JobResult
+		{
+			auto scope = log_task_scope(self, "Processing internal task");
+
+			/*return*/ std::move(task)();
+		}
+	};
+
+	Server::Server(
+		PendingInputQueue& pending_input_queue,
+		OutputQueue& output_queue,
+		ExternalPump external_pump,
+		ServerImplementation&& impl,
+		LoggingSink logging_sink,
+		MetricsSink metrics_sink)
+		: in_queue{ pending_input_queue }
+		, out_queue{ output_queue }
+		, ext_pump{ std::move(external_pump) }
+		, impl{ std::move(impl) }
+		, logger{ logging_sink }
+		, metrics{ std::move(metrics_sink) }
+#if not defined(LSP_BOOT_DISABLE_THREADS)
+		, work_guard{ asio::make_work_guard(io_ctx) }
+#endif
+	{
+	}
+
+	Server::~Server() = default;
+
 	auto Server::dispatch_request(std::string_view const method, lsp::RawMessage&& msg) -> std::expected< InternalMessageResult, ResponseError >
 	{
 		if (not msg.contains(keys::id))
@@ -65,7 +168,7 @@ namespace lsp_boot
 		log("Dispatching request: id={}, method={}", request_id, method);
 		// @todo: logging verbosity control. for now just truncating.
 		log([&](auto out) {
-			std::ranges::copy(boost::json::serialize(msg) | std::views::take(1024), out.iter());
+			std::ranges::copy(boost::json::serialize(msg) | std::views::take(message_logging_hard_char_limit), out.iter());
 			return out;
 			});
 
@@ -123,7 +226,7 @@ namespace lsp_boot
 		log("Dispatching notification: method={}", method);
 		// @todo: logging verbosity control. for now just truncating.
 		log([&](auto out) {
-			std::ranges::copy(boost::json::serialize(msg) | std::views::take(1024), out.iter());
+			std::ranges::copy(boost::json::serialize(msg) | std::views::take(message_logging_hard_char_limit), out.iter());
 			return out;
 			});
 
@@ -322,7 +425,21 @@ namespace lsp_boot
 
 	auto Server::push_job(Job job) -> void
 	{
+		// @todo: need to reconcile threaded and non-threaded in a cleaner way.
+		// currently pending_jobs and process_job_queue are both specific to non-threaded mode.
+#if not defined(LSP_BOOT_DISABLE_THREADS)
+		asio::post(io_ctx, [this, job = std::move(job)]() mutable {
+			if (has_initialized)
+			{
+				auto scope = log_task_scope(*this, "Pumping implementation");
+				impl.pump();
+			}
+
+			std::move(job).process(HandleJob{ *this });
+			});
+#else
 		pending_jobs.push(std::move(job));
+#endif
 	}
 
 	auto Server::push_request(RequestId id, lsp::Request request) -> void
@@ -335,6 +452,7 @@ namespace lsp_boot
 		push_job(std::move(notification));
 	}
 
+#if defined(LSP_BOOT_DISABLE_THREADS)
 	auto Server::process_job_queue() -> bool
 	{
 		while (!pending_jobs.empty())
@@ -362,52 +480,6 @@ namespace lsp_boot
 				impl.pump();
 			}
 
-			using JobResult = void;
-
-			struct HandleJob
-			{
-				Server& self;
-
-				// @todo: think we need to take result from handle_request/handle_notification, and potentially return
-				// not implemented result if the implementation had no corresponding handler. see commented out make_not_implemented_result() call above.
-
-				auto operator() (StoredRequest&& request) const -> JobResult
-				{
-					auto scope = log_task_scope(self, "Processing request: id={}, method={}", request.id, lsp::message_name(request.req));
-
-					bool const is_initialize_request = std::holds_alternative< lsp::requests::Initialize >(request.req);
-					auto result = self.handle_request(std::move(request.req));
-
-					if (result.has_value())
-					{
-						self.send_request_success_response(request.id, std::move(*result));
-
-						if (is_initialize_request)
-						{
-							self.has_initialized = true;
-						}
-					}
-					else
-					{
-						self.send_request_error_response(request.id, std::move(result.error()));
-					}
-				}
-
-				auto operator() (StoredNotification&& notification) const -> JobResult
-				{
-					auto scope = log_task_scope(self, "Processing notification: method={}", lsp::message_name(notification));
-
-					/*return*/ self.handle_notification(std::move(notification));
-				}
-
-				auto operator() (ServerInternalTask&& task) const -> JobResult
-				{
-					auto scope = log_task_scope(self, "Processing internal task");
-
-					/*return*/ std::move(task)();
-				}
-			};
-
 			auto& job = pending_jobs.front();
 			std::move(job).process(HandleJob{ *this });
 			pending_jobs.pop();
@@ -415,57 +487,60 @@ namespace lsp_boot
 
 		return true;
 	}
+#endif
 
 #if not defined(LSP_BOOT_DISABLE_THREADS)
 	auto Server::run() -> void
 	{
-		while (!shutdown)
-		{
-			// Run any outstanding jobs to completion.
-			if (not process_job_queue())
+		// @note: this is a workaround to connect asio io context (added for timed job purposes) with the existing blocking queue.
+		// if stick with asio, would make sense to just post directly to the io context instead of the queue.
+		auto queue_bridge_thread = std::jthread{ [this] {
+			while (!shutdown)
 			{
-				return;
-			}
-
-			// Now perform blocking wait on incoming queue.
-			if (auto msg = in_queue.pop_with_abort([this] { return shutdown.load(); }); msg.has_value())
-			{
-				auto dispatch_result = dispatch_message(std::move(*msg));
-				if (dispatch_result.exit)
+				if (auto msg = in_queue.pop_with_abort([this] { return shutdown.load(); }); msg.has_value())
 				{
-					log("Server exiting as requested.");
-					return;
+					asio::post(io_ctx, [this, msg = std::move(*msg)]() mutable {
+						auto dispatch_result = dispatch_message(std::move(msg));
+						if (dispatch_result.exit)
+						{
+							log("Server exiting as requested.");
+							request_shutdown();
+						}
+						});
 				}
 			}
+		} };
 
+		io_ctx.run();
 
-			//	if (auto result = dispatch_message(std::move(*msg)); result.has_value())
-			//	{
-			//		postprocess_message(*result);
+		//while (!shutdown)
+		//{
+		//	// Run any outstanding jobs to completion.
+		//	if (not process_job_queue())
+		//	{
+		//		return;
+		//	}
 
-			//		if (result->result.exit)
-			//		{
-			//			log("Server exiting as requested.");
-			//			break;
-			//		}
-			//	}
-			//	else
-			//	{
-			//		// Failure
-			//		log("Server exiting unexpectedly, message dispatch failure.");
-			//		break;
-			//	}
-			//}
-		}
+		//	// Now perform blocking wait on incoming queue.
+		//	if (auto msg = in_queue.pop_with_abort([this] { return shutdown.load(); }); msg.has_value())
+		//	{
+		//		auto dispatch_result = dispatch_message(std::move(*msg));
+		//		if (dispatch_result.exit)
+		//		{
+		//			log("Server exiting as requested.");
+		//			return;
+		//		}
+		//	}
+		//}
 	}
 
 	auto Server::request_shutdown() -> void
 	{
 		shutdown = true;
 		in_queue.notify();
+		work_guard.reset();
 	}
-#endif
-
+#else
 	auto Server::update() -> UpdateResult
 	{
 		while (true)
@@ -495,6 +570,7 @@ namespace lsp_boot
 
 		return UpdateResult::idle;
 	}
+#endif
 
 	auto Server::process_incoming_queue_non_blocking() -> InternalMessageResult
 	{
@@ -540,7 +616,13 @@ namespace lsp_boot
 	auto Server::get_status() const -> boost::json::object
 	{
 		return {
-			{ "num_jobs", pending_jobs.size() },
+			{ "num_jobs",
+#if not defined(LSP_BOOT_DISABLE_THREADS)
+				0 // todo
+#else
+				pending_jobs.size()
+#endif
+			},
 		};
 	}
 
@@ -563,6 +645,65 @@ namespace lsp_boot
 	{
 		//internal_task_queue.push(std::move(task));
 		push_job(std::move(task));
+	}
+
+	auto Server::set_delayed_internal_task_impl(std::uint64_t id, std::chrono::milliseconds delay, ServerInternalTask&& task) -> void
+	{
+#if defined(LSP_BOOT_DISABLE_THREADS)
+		assert(false); // not currently supported in single-threaded mode
+		return;
+#else
+		//auto timepoint = std::chrono::steady_clock::now() + delay;
+		//if (auto existing_iter = std::ranges::lower_bound(timed_jobs, id, std::ranges::less{}, &TimedJobEntry::id); existing_iter != timed_jobs.end())
+		//{
+		//	if (existing_iter->id == id)
+		//	{
+		//		// @note: currently, if resetting an existing job, we simply destroy the task that's there and replace it with the new one.
+		//		timed_jobs.erase(existing_iter);
+		//	}
+		//}
+		//auto iter = std::ranges::lower_bound(timed_jobs, timepoint, std::ranges::less{}, &TimedJobEntry::time);
+		//timed_jobs.emplace(iter, id, timepoint, std::move(task));
+
+		// @note: assumption is that this function is only invoked from the thread running the io_context.
+		// timed_jobs is not synchronized.
+
+		auto iter = timed_jobs.find(id);
+		if (iter == timed_jobs.end())
+		{
+			log("Establishing new timed job for id {}", id);
+			iter = timed_jobs.emplace(id, std::make_unique< TimedJobEntry >(std::move(task), io_ctx)).first;
+		}
+		else
+		{
+			// replace existing
+			log("Updating existing timed job for id {}", id);
+			iter->second->job = std::move(task);
+			++iter->second->generation;
+		}
+
+		auto cancelled = iter->second->timer.expires_after(delay);
+		log("{} waits cancelled", cancelled);
+		auto job = [id, gen = iter->second->generation, this](std::error_code const& ec) {
+			log("Timed job handler [{}/{}]: {}", id, gen, !ec ? "<completion>"s : ec.message());
+
+			if (!ec)
+			{
+				auto const iter = timed_jobs.find(id);
+				assert(iter != timed_jobs.end());
+				if (iter->second->generation == gen)
+				{
+					std::move(iter->second->job).process(HandleJob{ *this });
+					timed_jobs.erase(iter);
+				}
+				else
+				{
+					log("Generation not latest ({}): dropping", iter->second->generation);
+				}
+			}
+			};
+		iter->second->timer.async_wait(std::move(job));
+#endif
 	}
 
 	auto Server::get_status_impl() const -> boost::json::object

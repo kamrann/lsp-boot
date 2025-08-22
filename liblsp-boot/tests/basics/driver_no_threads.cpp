@@ -86,7 +86,7 @@ int main ()
 			connection_done = true;
 		}
 
-		if (!server_done && !server.update())
+		if (!server_done && server.update() == lsp_boot::Server::UpdateResult::shutdown)
 		{
 			std::cerr << "Server execution completed." << std::endl;
 			server_done = true;

@@ -1,9 +1,14 @@
 
 module;
 
+#if not defined(LSP_BOOT_DISABLE_THREADS)
+#include <asio.hpp>
+#endif
+
 #if defined(LSP_BOOT_ENABLE_IMPORT_STD)
 import std;
 #else
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 #include <string>
@@ -13,6 +18,7 @@ import std;
 #include <expected>
 #include <span>
 #include <queue>
+#include <unordered_map>
 #include <iterator>
 #include <memory>
 #include <chrono>
@@ -126,6 +132,11 @@ namespace lsp_boot
 			queue_internal_task_impl(std::move(task));
 		}
 
+		auto set_delayed_internal_task(std::uint64_t id, std::chrono::milliseconds delay, ServerInternalTask&& task) -> void
+		{
+			set_delayed_internal_task_impl(id, delay, std::move(task));
+		}
+
 		auto get_status() const -> boost::json::object
 		{
 			return get_status_impl();
@@ -158,6 +169,7 @@ namespace lsp_boot
 		virtual auto send_request_impl(lsp::RawMessage&&, ResponseHandlerFn&& handler) -> void = 0;
 		virtual auto send_notification_impl(lsp::RawMessage&&) const -> void = 0;
 		virtual auto queue_internal_task_impl(ServerInternalTask&&) -> void = 0;
+		virtual auto set_delayed_internal_task_impl(std::uint64_t id, std::chrono::milliseconds delay, ServerInternalTask&& task) -> void = 0;
 		virtual auto get_status_impl() const -> boost::json::object = 0;
 		virtual auto log_impl(LogOutputCallbackView) const -> void = 0;
 	};
@@ -198,16 +210,25 @@ namespace lsp_boot
 			ImplementationInit&& implementation_init,
 			LoggingSink logging_sink = {},
 			MetricsSink metrics_sink = {})
-			: in_queue{ pending_input_queue }, out_queue{ output_queue }, ext_pump{ std::move(external_pump) }, logger{ logging_sink }, metrics{ std::move(metrics_sink) }
+			: Server(pending_input_queue, output_queue, std::move(external_pump), wrap_implementation(std::forward< ImplementationInit >(implementation_init)), logging_sink, metrics_sink)
 		{
-			impl = wrap_implementation(std::forward< ImplementationInit >(implementation_init));
 		}
+
+		Server(
+			PendingInputQueue& pending_input_queue,
+			OutputQueue& output_queue,
+			ExternalPump external_pump,
+			ServerImplementation&& impl,
+			LoggingSink logging_sink = {},
+			MetricsSink metrics_sink = {});
+		~Server();
+		Server(Server&&) = delete;
+		Server& operator= (Server&&) = delete;
 
 #if not defined(LSP_BOOT_DISABLE_THREADS)
 		auto run() -> void;
 		auto request_shutdown() -> void;
-#endif
-
+#else
 		enum class UpdateResult
 		{
 			processed,
@@ -217,6 +238,7 @@ namespace lsp_boot
 
 		// single-threaded api. returns false to signal shutdown.
 		auto update() -> UpdateResult;
+#endif
 
 	private:
 		static auto make_not_implemented_result()
@@ -354,6 +376,10 @@ namespace lsp_boot
 		};
 
 		using PendingJobs = std::queue< Job >;
+		struct TimedJobEntry;
+		using TimedJobs = std::unordered_map< std::uint64_t, std::unique_ptr< TimedJobEntry > >;
+
+		struct HandleJob;
 
 		auto push_job(Job job) -> void;
 		
@@ -377,7 +403,9 @@ namespace lsp_boot
 			return impl.handle_notification(std::move(notification));
 		}
 
+#if defined(LSP_BOOT_DISABLE_THREADS)
 		auto process_job_queue() -> bool;
+#endif
 		auto process_incoming_queue_non_blocking() -> InternalMessageResult;
 		auto postprocess_message(DispatchResult const&) const -> void;
 		auto pump_external() const -> void;
@@ -396,6 +424,7 @@ namespace lsp_boot
 		auto send_request_impl(lsp::RawMessage&&, ResponseHandlerFn&& handler) -> void override;
 		auto send_notification_impl(lsp::RawMessage&&) const -> void override;
 		auto queue_internal_task_impl(ServerInternalTask&&) -> void override;
+		auto set_delayed_internal_task_impl(std::uint64_t id, std::chrono::milliseconds delay, ServerInternalTask&& task) -> void override;
 		auto get_status_impl() const -> boost::json::object override;
 		auto log_impl(LogOutputCallbackView) const -> void override;
 
@@ -403,13 +432,17 @@ namespace lsp_boot
 		PendingInputQueue& in_queue;
 		OutputQueue& out_queue;
 		ExternalPump ext_pump;
-		PendingJobs pending_jobs;
 		ServerImplementation impl;
 		bool has_initialized = false; // set after having returned successfully from Initialize request handler.
 		LoggingSink logger;
 		MetricsSink metrics;
 #if not defined(LSP_BOOT_DISABLE_THREADS)
 		std::atomic< bool > shutdown;
+		asio::io_context io_ctx;
+		asio::executor_work_guard< asio::io_context::executor_type > work_guard;
+		TimedJobs timed_jobs;
+#else
+		PendingJobs pending_jobs;
 #endif
 	};
 }
