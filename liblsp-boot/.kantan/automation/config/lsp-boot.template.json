@@ -1,0 +1,5 @@
+{
+  "global": {
+    "liblsp_boot.enable_import_std": "$import_std"
+  }
+}
