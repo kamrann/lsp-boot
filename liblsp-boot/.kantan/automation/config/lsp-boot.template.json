@@ -1,5 +1,9 @@
 {
   "global": {
-    "liblsp_boot.enable_import_std": "$import_std"
+  },
+  "target-configuration": {
+    "liblsp-boot": {
+      "liblsp_boot.enable_import_std": "$import_std"
+    }
   }
 }
