@@ -108,6 +108,7 @@ namespace lsp_boot::lsp
 		constexpr auto text_document = "textDocument"sv;
 		constexpr auto text_edit = "textEdit"sv;
 		constexpr auto text_edit_text = "textEditText"sv;
+		constexpr auto title = "title"sv;
 		constexpr auto token_modifiers = "tokenModifiers"sv;
 		constexpr auto token_types = "tokenTypes"sv;
 		constexpr auto trigger_character = "triggerCharacter"sv;
@@ -442,6 +443,7 @@ namespace lsp_boot::lsp
 			hover,
 			semantic_tokens_full,
 			semantic_tokens_range,
+			code_lens,
 
 			register_capability,
 			unregister_capability,
@@ -459,6 +461,7 @@ namespace lsp_boot::lsp
 		using Hover = JsonMessage< Kinds::hover, "textDocument/hover" >;
 		using SemanticTokensFull = JsonMessage< Kinds::semantic_tokens_full, "textDocument/semanticTokens/full" >;
 		using SemanticTokensRange = JsonMessage< Kinds::semantic_tokens_range, "textDocument/semanticTokens/range" >;
+		using CodeLens = JsonMessage< Kinds::code_lens, "textDocument/codeLens" >;
 
 		// Server to Client
 		using RegisterCapability = JsonMessage< Kinds::register_capability, "client/registerCapability" >;
@@ -513,6 +516,7 @@ namespace lsp_boot::lsp
 		requests::Hover,
 		requests::SemanticTokensFull,
 		requests::SemanticTokensRange,
+		requests::CodeLens,
 		requests::Custom
 	>;
 

@@ -205,6 +205,10 @@ namespace lsp_boot
 		{
 			push_request(request_id, requests::SemanticTokensRange(std::move(msg)));
 		}
+		else if (method == requests::CodeLens::name)
+		{
+			push_request(request_id, requests::CodeLens(std::move(msg)));
+		}
 		else if (method == requests::DocumentSymbols::name)
 		{
 			push_request(request_id, requests::DocumentSymbols(std::move(msg)));
