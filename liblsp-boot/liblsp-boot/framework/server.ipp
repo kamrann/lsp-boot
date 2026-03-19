@@ -105,6 +105,12 @@ namespace lsp_boot
 
 	export using ResponseHandlerFn = std::function< void(boost::json::object) >; // @todo: not sure it needs to be object?
 
+	export enum class DispatchMode
+	{
+		async,
+		sync,
+	};
+
 	export class ServerImplAPI
 	{
 	public:
@@ -119,9 +125,14 @@ namespace lsp_boot
 		/**
 		 * Send an LSP notification to the client.
 		 */
-		auto send_notification(lsp::RawMessage&& msg) const -> void
+		auto send_notification(lsp::RawMessage&& msg, DispatchMode dispatch_mode = DispatchMode::async) const -> void
 		{
 			send_notification_impl(std::move(msg));
+			
+			if (dispatch_mode == DispatchMode::sync)
+			{
+				pump();
+			}
 		}
 
 		/**
@@ -135,6 +146,11 @@ namespace lsp_boot
 		auto set_delayed_internal_task(std::uint64_t id, std::chrono::milliseconds delay, ServerInternalTask&& task) -> void
 		{
 			set_delayed_internal_task_impl(id, delay, std::move(task));
+		}
+
+		auto pump() const -> void
+		{
+			pump_impl();
 		}
 
 		auto get_status() const -> boost::json::object
@@ -170,6 +186,7 @@ namespace lsp_boot
 		virtual auto send_notification_impl(lsp::RawMessage&&) const -> void = 0;
 		virtual auto queue_internal_task_impl(ServerInternalTask&&) -> void = 0;
 		virtual auto set_delayed_internal_task_impl(std::uint64_t id, std::chrono::milliseconds delay, ServerInternalTask&& task) -> void = 0;
+		virtual auto pump_impl() const -> void = 0;
 		virtual auto get_status_impl() const -> boost::json::object = 0;
 		virtual auto log_impl(LogOutputCallbackView) const -> void = 0;
 	};
@@ -425,6 +442,7 @@ namespace lsp_boot
 		auto send_notification_impl(lsp::RawMessage&&) const -> void override;
 		auto queue_internal_task_impl(ServerInternalTask&&) -> void override;
 		auto set_delayed_internal_task_impl(std::uint64_t id, std::chrono::milliseconds delay, ServerInternalTask&& task) -> void override;
+		auto pump_impl() const -> void override;
 		auto get_status_impl() const -> boost::json::object override;
 		auto log_impl(LogOutputCallbackView) const -> void override;
 

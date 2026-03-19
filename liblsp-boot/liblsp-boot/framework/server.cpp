@@ -710,6 +710,11 @@ namespace lsp_boot
 #endif
 	}
 
+	auto Server::pump_impl() const -> void
+	{
+		pump_external();
+	}
+
 	auto Server::get_status_impl() const -> boost::json::object
 	{
 		return get_status();
