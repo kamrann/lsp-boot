@@ -60,5 +60,6 @@ namespace lsp_boot
 #if not defined(LSP_BOOT_DISABLE_THREADS)
 		std::atomic< bool > shutdown = false;
 #endif
+		std::mutex out_mx;
 	};
 }

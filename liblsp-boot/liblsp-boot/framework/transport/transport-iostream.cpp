@@ -30,6 +30,13 @@ namespace lsp_boot
 	auto StreamConnection::send_message(MessageContent&& message) -> void
 	{
 		auto content = boost::json::serialize(message);
+
+		// @todo: needs more thought, currently bit of a mess trying to support multiple usage approaches.
+		// in multithreaded mode, if we only use process_output() it will be a single thread accessing the out stream and mutex lock is unnecessary pessimization.
+		// but the update() member function is currently provided in both single and multithreaded modes, which means some external code/thread could potentially call
+		// in whilst the output thread is running process_output()...
+		auto guard = std::lock_guard{ out_mx };
+
 		out
 			<< "Content-Length: "
 			<< content.length()
